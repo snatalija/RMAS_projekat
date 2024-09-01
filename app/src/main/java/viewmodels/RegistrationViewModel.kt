@@ -1,20 +1,21 @@
 package com.example.projekat.viewmodels
 
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
-import kotlinx.coroutines.launch
-import java.util.UUID
+import com.google.firebase.storage.UploadTask
+import kotlinx.coroutines.tasks.await
 
 class RegistrationViewModel : ViewModel() {
+
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
-    private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
+    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
     private val storage: FirebaseStorage = FirebaseStorage.getInstance()
 
-    fun registerUser(
+    suspend fun registerUser(
         email: String,
         password: String,
         firstName: String,
@@ -24,45 +25,40 @@ class RegistrationViewModel : ViewModel() {
         onSuccess: () -> Unit,
         onFailure: (Exception) -> Unit
     ) {
-        viewModelScope.launch {
-            auth.createUserWithEmailAndPassword(email, password)
-                .addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        val user = auth.currentUser
-                        user?.let {
-                            val userInfo = hashMapOf(
-                                "uid" to it.uid,
-                                "email" to email,
-                                "firstName" to firstName,
-                                "lastName" to lastName,
-                                "phoneNumber" to phoneNumber
-                            )
+        try {
+            // Register user with Firebase Auth
+            val authResult = auth.createUserWithEmailAndPassword(email, password).await()
 
-                            val userDocRef = db.collection("users").document(it.uid)
+            // Get the user ID
+            val userId = authResult.user?.uid ?: throw Exception("User ID is null")
 
-                            if (profilePictureUri != null) {
-                                val storageRef = storage.reference.child("profile_pictures/${UUID.randomUUID()}")
-                                val uploadTask = storageRef.putFile(Uri.parse(profilePictureUri))
-                                uploadTask.addOnSuccessListener {
-                                    storageRef.downloadUrl.addOnSuccessListener { downloadUrl ->
-                                        userInfo["profilePictureUri"] = downloadUrl.toString()
-                                        userDocRef.set(userInfo)
-                                            .addOnSuccessListener { onSuccess() }
-                                            .addOnFailureListener { exception -> onFailure(exception) }
-                                    }
-                                }.addOnFailureListener { exception ->
-                                    onFailure(exception)
-                                }
-                            } else {
-                                userDocRef.set(userInfo)
-                                    .addOnSuccessListener { onSuccess() }
-                                    .addOnFailureListener { exception -> onFailure(exception) }
-                            }
-                        }
-                    } else {
-                        onFailure(task.exception ?: Exception("Unknown error"))
-                    }
+            // Upload profile picture if exists
+            val profilePictureUrl = profilePictureUri?.let {
+                val storageRef = storage.reference.child("profile_pictures/$userId.jpg")
+                val uploadTask = storageRef.putFile(Uri.parse(it))
+                uploadTask.addOnFailureListener { exception ->
+                    Log.e("FirebaseStorage", "Error uploading file", exception)
                 }
+                val uploadTaskSnapshot = uploadTask.await()
+                uploadTaskSnapshot.metadata?.reference?.downloadUrl?.await().toString()
+            }
+
+            // Save user information to Firestore
+            val userData = mapOf(
+                "firstName" to firstName,
+                "lastName" to lastName,
+                "phoneNumber" to phoneNumber,
+                "profilePictureUrl" to profilePictureUrl
+            )
+
+            firestore.collection("users").document(userId).set(userData).await()
+
+            // Call success callback
+            onSuccess()
+
+        } catch (exception: Exception) {
+            // Call failure callback
+            onFailure(exception)
         }
     }
 }

@@ -1,7 +1,5 @@
 package com.example.projekat.screens
 
-import android.app.Activity
-import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -12,21 +10,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
 import com.example.projekat.viewmodels.RegistrationViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun RegistrationScreen(
-    modifier: Modifier = Modifier,
-    onRegistrationSuccess: () -> Unit = {},
-    onRegistrationFailure: (Exception) -> Unit = {}
+    navController: NavHostController
 ) {
     val viewModel: RegistrationViewModel = viewModel()
+    val coroutineScope = rememberCoroutineScope()
+
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var firstName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
     var phoneNumber by remember { mutableStateOf("") }
     var profilePictureUri by remember { mutableStateOf<Uri?>(null) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     // Launcher for selecting image from gallery
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
@@ -34,7 +35,7 @@ fun RegistrationScreen(
     }
 
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
         verticalArrangement = Arrangement.Center
@@ -70,25 +71,39 @@ fun RegistrationScreen(
             label = { Text("Phone Number") }
         )
         Spacer(modifier = Modifier.height(8.dp))
+
         Button(onClick = {
             galleryLauncher.launch("image/*")
         }) {
             Text("Select Profile Picture")
         }
+
         Spacer(modifier = Modifier.height(16.dp))
+
         Button(onClick = {
-            viewModel.registerUser(
-                email = email,
-                password = password,
-                firstName = firstName,
-                lastName = lastName,
-                phoneNumber = phoneNumber,
-                profilePictureUri = profilePictureUri?.toString(),
-                onSuccess = { onRegistrationSuccess() },
-                onFailure = { exception -> onRegistrationFailure(exception) }
-            )
+            coroutineScope.launch {
+                viewModel.registerUser(
+                    email = email,
+                    password = password,
+                    firstName = firstName,
+                    lastName = lastName,
+                    phoneNumber = phoneNumber,
+                    profilePictureUri = profilePictureUri?.toString(),
+                    onSuccess = {
+                        navController.navigate("profile")
+                    },
+                    onFailure = { exception ->
+                        errorMessage = exception.message
+                    }
+                )
+            }
         }) {
             Text("Register")
+        }
+
+        errorMessage?.let {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(text = it, color = MaterialTheme.colorScheme.error)
         }
     }
 }
