@@ -1,5 +1,6 @@
 package com.example.projekat.screens
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,6 +25,9 @@ class ClubDetailViewModel : ViewModel() {
     private val _review = MutableStateFlow("")
     val review: StateFlow<String> = _review.asStateFlow()
 
+    private val _rating = MutableStateFlow(0)  // Add this for rating
+    val rating: StateFlow<Int> = _rating.asStateFlow()
+
     private val _isSaving = MutableStateFlow(false)
     val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
 
@@ -35,10 +39,15 @@ class ClubDetailViewModel : ViewModel() {
 
                 val reviewsSnapshot = firestore.collection("dance_clubs").document(clubId).collection("reviews").get().await()
                 _reviews.value = reviewsSnapshot.map { document ->
+                    Log.d("nalesim", "" + document.getLong("rating")!!.toInt() + " " + document.getLong("rating"))
                     val reviewText = document.getString("review") ?: ""
                     val userId = document.getString("userId") ?: ""
+                    val reviewRating = document.getLong("rating")!!.toInt() // Ensure rating is read as Int
+
+                    updateRating(reviewRating)
+
                     val userName = getUserName(userId)
-                    Review(reviewText, userName)
+                    Review(reviewText, userName, reviewRating)
                 }
             } catch (e: Exception) {
                 // Handle error
@@ -61,6 +70,9 @@ class ClubDetailViewModel : ViewModel() {
     fun updateReview(newReview: String) {
         _review.value = newReview
     }
+    fun updateRating(newRating: Int) {  // Add this to update rating
+        _rating.value = newRating
+    }
 
     fun submitReview(clubId: String) {
         viewModelScope.launch {
@@ -68,6 +80,7 @@ class ClubDetailViewModel : ViewModel() {
             auth.currentUser?.let { user ->
                 val reviewData = hashMapOf(
                     "review" to _review.value,
+                    "rating" to _rating.value,
                     "userId" to user.uid
                 )
 
@@ -77,6 +90,7 @@ class ClubDetailViewModel : ViewModel() {
                         .add(reviewData)
                         .await()
                     _review.value = "" // Clear review field
+                    _rating.value = 0
                 } catch (e: Exception) {
                     // Handle error
                 } finally {
@@ -98,5 +112,6 @@ data class Club(
 
 data class Review(
     val review: String = "",
-    val userName: String = ""
+    val userName: String = "",
+    val rating: Int = 0
 )
