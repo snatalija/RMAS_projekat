@@ -91,6 +91,7 @@ class ClubDetailViewModel : ViewModel() {
                         .await()
                     _review.value = "" // Clear review field
                     _rating.value = 0
+                    loadClubDetails(clubId)
                 } catch (e: Exception) {
                     // Handle error
                 } finally {
