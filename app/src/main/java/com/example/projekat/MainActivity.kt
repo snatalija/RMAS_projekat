@@ -13,7 +13,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.*
+import androidx.navigation.navArgument
+import com.example.projekat.screens.AddDanceClubScreen
+import com.example.projekat.screens.ClubDetailScreen
 import com.example.projekat.screens.LoginScreen
 import com.example.projekat.screens.ProfileScreen
 import com.example.projekat.screens.RegistrationScreen
@@ -87,9 +91,7 @@ fun BottomNavigationBar(navController: NavHostController) {
             }
         )
     }
-}
-
-@Composable
+}@Composable
 fun NavigationHost(
     navController: NavHostController,
     startDestination: String,
@@ -106,10 +108,20 @@ fun NavigationHost(
             ProfileScreen(navController = navController)
         }
         composable("map") {
-            MapScreen()
+            MapScreen(navController = navController)
+        }
+        composable("add_dance_club?latitude={latitude}&longitude={longitude}") { backStackEntry ->
+            val latitude = backStackEntry.arguments?.getString("latitude")?.toDoubleOrNull() ?: 0.0
+            val longitude = backStackEntry.arguments?.getString("longitude")?.toDoubleOrNull() ?: 0.0
+            AddDanceClubScreen(navController = navController, latitude = latitude, longitude = longitude)
+        }
+        composable("club_detail/{clubId}") { backStackEntry ->
+            val clubId = backStackEntry.arguments?.getString("clubId") ?: ""
+            ClubDetailScreen(navController = navController, clubId = clubId)
         }
     }
 }
+
 
 @Preview(showBackground = true)
 @Composable
