@@ -17,6 +17,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import com.example.projekat.screens.AddDanceClubScreen
+import com.example.projekat.screens.AllDanceClubsScreen
 import com.example.projekat.screens.ClubDetailScreen
 import com.example.projekat.screens.LoginScreen
 import com.example.projekat.screens.ProfileScreen
@@ -63,13 +64,10 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
 @Composable
 fun BottomNavigationBar(navController: NavHostController) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route ?: ""
-
-    Log.d("BottomNavigationBar", "Current route: $currentRoute")
 
     BottomNavigation {
         BottomNavigationItem(
@@ -77,8 +75,9 @@ fun BottomNavigationBar(navController: NavHostController) {
             label = { Text("Profile") },
             selected = currentRoute == "profile",
             onClick = {
-                Log.d("BottomNavigationBar", "Navigating to profile")
-                navController.navigate("profile")
+                navController.navigate("profile") {
+                    popUpTo("profile") { inclusive = true }
+                }
             }
         )
         BottomNavigationItem(
@@ -86,12 +85,25 @@ fun BottomNavigationBar(navController: NavHostController) {
             label = { Text("Map") },
             selected = currentRoute == "map",
             onClick = {
-                Log.d("BottomNavigationBar", "Navigating to map")
-                navController.navigate("map")
+                navController.navigate("map") {
+                    popUpTo("map") { inclusive = true }
+                }
+            }
+        )
+
+        BottomNavigationItem(
+            icon = { Icon(imageVector = Icons.Filled.Home, contentDescription = "All Clubs") },
+            label = { Text("All Clubs") },
+            selected = currentRoute == "all_clubs",
+            onClick = {
+                Log.d("BottomNavigationBar", "Navigating to all clubs")
+                navController.navigate("all_clubs")
             }
         )
     }
-}@Composable
+}
+
+@Composable
 fun NavigationHost(
     navController: NavHostController,
     startDestination: String,
@@ -109,6 +121,9 @@ fun NavigationHost(
         }
         composable("map") {
             MapScreen(navController = navController)
+        }
+        composable("all_clubs") {
+            AllDanceClubsScreen(navController = navController)
         }
         composable("add_dance_club?latitude={latitude}&longitude={longitude}") { backStackEntry ->
             val latitude = backStackEntry.arguments?.getString("latitude")?.toDoubleOrNull() ?: 0.0

@@ -1,6 +1,6 @@
 package com.example.projekat.screens
 
-import android.util.Log
+import Club
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,29 +31,47 @@ class ClubDetailViewModel : ViewModel() {
     private val _isSaving = MutableStateFlow(false)
     val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
 
+    private val _ownerName = MutableStateFlow("") // New state for owner's name
+    val ownerName: StateFlow<String> = _ownerName.asStateFlow()
+
+    private val _reviewExists = MutableStateFlow(false)
+    val reviewExists: StateFlow<Boolean> = _reviewExists.asStateFlow()
+
     fun loadClubDetails(clubId: String) {
         viewModelScope.launch {
             try {
+                // Fetch club details
                 val clubDocument = firestore.collection("dance_clubs").document(clubId).get().await()
-                _club.value = clubDocument.toObject(Club::class.java)
+                val clubData = clubDocument.toObject(Club::class.java)
+                val userId = clubDocument.getString("userId") ?: ""
+                _club.value = clubData
 
+                clubData?.ownerId?.let { ownerId ->
+                    _ownerName.value = getUserName(userId)
+                }
+
+                // Fetch reviews and map to Review data class
                 val reviewsSnapshot = firestore.collection("dance_clubs").document(clubId).collection("reviews").get().await()
                 _reviews.value = reviewsSnapshot.map { document ->
-                    Log.d("nalesim", "" + document.getLong("rating")!!.toInt() + " " + document.getLong("rating"))
                     val reviewText = document.getString("review") ?: ""
-                    val userId = document.getString("userId") ?: ""
-                    val reviewRating = document.getLong("rating")!!.toInt() // Ensure rating is read as Int
 
-                    updateRating(reviewRating)
-
-                    val userName = getUserName(userId)
+                    val userName = getUserName(userId)  // Fetch user name asynchronously
+                    val reviewRating = document.getLong("rating")?.toInt() ?: 0
                     Review(reviewText, userName, reviewRating)
+                }
+
+                // Check if the current user has already reviewed this club
+                auth.currentUser?.let { user ->
+                    val userReviewDoc = firestore.collection("dance_clubs").document(clubId).collection("reviews").document(user.uid).get().await()
+                    _reviewExists.value = userReviewDoc.exists()
+                    _club.value = _club.value?.copy(hasReviewed = userReviewDoc.exists())
                 }
             } catch (e: Exception) {
                 // Handle error
             }
         }
     }
+
 
     private suspend fun getUserName(userId: String): String {
         return try {
@@ -78,20 +96,29 @@ class ClubDetailViewModel : ViewModel() {
         viewModelScope.launch {
             _isSaving.value = true
             auth.currentUser?.let { user ->
-                val reviewData = hashMapOf(
-                    "review" to _review.value,
-                    "rating" to _rating.value,
-                    "userId" to user.uid
-                )
+                val userId = user.uid
+                val reviewRef = firestore.collection("dance_clubs").document(clubId).collection("reviews").document(userId)
 
                 try {
-                    firestore.collection("dance_clubs").document(clubId)
-                        .collection("reviews")
-                        .add(reviewData)
-                        .await()
-                    _review.value = "" // Clear review field
-                    _rating.value = 0
-                    loadClubDetails(clubId)
+                    val reviewDoc = reviewRef.get().await()
+
+                    if (!reviewDoc.exists()) {
+                        val reviewData = hashMapOf(
+                            "review" to _review.value,
+                            "rating" to _rating.value,
+                            "userId" to userId
+                        )
+                        reviewRef.set(reviewData).await()
+                        _review.value = "" // Clear review field
+                        _rating.value = 0  // Clear rating
+
+                        // Update club status
+                        val updatedClub = _club.value?.copy(hasReviewed = true)
+                        _club.value = updatedClub
+                        _reviewExists.value = true
+                    } else {
+                        _reviewExists.value = true // Set to true if review already exists
+                    }
                 } catch (e: Exception) {
                     // Handle error
                 } finally {
@@ -105,11 +132,7 @@ class ClubDetailViewModel : ViewModel() {
     }
 }
 
-data class Club(
-    val name: String = "",
-    val danceType: String = "",
-    val workingHours: String = ""
-)
+
 
 data class Review(
     val review: String = "",

@@ -1,7 +1,9 @@
 package com.example.projekat.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
@@ -12,9 +14,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
-import kotlinx.coroutines.flow.StateFlow
-
 
 @Composable
 fun ClubDetailScreen(navController: NavHostController, clubId: String) {
@@ -24,6 +25,8 @@ fun ClubDetailScreen(navController: NavHostController, clubId: String) {
     val review by viewModel.review.collectAsState()
     val rating by viewModel.rating.collectAsState()
     val isSaving by viewModel.isSaving.collectAsState()
+    val reviewExists by viewModel.reviewExists.collectAsState()
+    val ownerName by viewModel.ownerName.collectAsState()
 
     LaunchedEffect(clubId) {
         viewModel.loadClubDetails(clubId)
@@ -32,12 +35,14 @@ fun ClubDetailScreen(navController: NavHostController, clubId: String) {
     Column(modifier = Modifier
         .fillMaxSize()
         .padding(16.dp)
+        .verticalScroll(rememberScrollState())
     ) {
         club?.let {
             Text("Club Name: ${it.name}", style = MaterialTheme.typography.h5)
             Spacer(modifier = Modifier.height(8.dp))
             Text("Dance Type: ${it.danceType}")
             Text("Working Hours: ${it.workingHours}")
+            Text("Owner: $ownerName") // Display the owner's name
             Spacer(modifier = Modifier.height(16.dp))
             // Rating
             Text("Rating: $rating/5", style = MaterialTheme.typography.body1)
@@ -85,6 +90,12 @@ fun ClubDetailScreen(navController: NavHostController, clubId: String) {
                 Text("Rating: ${review.rating}/5", style = MaterialTheme.typography.body2) // Display the rating
                 Spacer(modifier = Modifier.height(8.dp))
             }
+
+            if (reviewExists) {
+                Text("You have already reviewed this club.", color = Color.Red, style = MaterialTheme.typography.body2)
+            }
+            val pinColor = if (it.hasReviewed) Color.Green else Color.Red
+
         } ?: run {
             Text("Loading...", style = MaterialTheme.typography.h6)
         }

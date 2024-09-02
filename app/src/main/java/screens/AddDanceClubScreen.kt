@@ -7,19 +7,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.auth.FirebaseAuth
-import com.google.maps.android.compose.*
+import androidx.lifecycle.viewmodel.compose.viewModel
+import java.text.SimpleDateFormat
+import java.util.*
 
 @Composable
 fun AddDanceClubScreen(navController: NavHostController, latitude: Double, longitude: Double) {
+    val viewModel: AddDanceClubViewModel = viewModel()
     var clubName by remember { mutableStateOf("") }
     var workingHours by remember { mutableStateOf("") }
     var danceType by remember { mutableStateOf("") }
+    var creationDate by remember { mutableStateOf("") } // New state for creation date
     var isSaving by remember { mutableStateOf(false) }
-
-    val firestore = FirebaseFirestore.getInstance()
-    val user = FirebaseAuth.getInstance().currentUser
 
     Column(
         modifier = Modifier
@@ -50,29 +49,49 @@ fun AddDanceClubScreen(navController: NavHostController, latitude: Double, longi
             modifier = Modifier.fillMaxWidth()
         )
 
+        OutlinedTextField(
+            value = creationDate,
+            onValueChange = { creationDate = it },
+            label = { Text("Creation Date (yyyy-MM-dd)") }, // Assuming date format
+            modifier = Modifier.fillMaxWidth()
+        )
+
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
             onClick = {
                 isSaving = true
-                val danceClubData = hashMapOf(
-                    "name" to clubName,
-                    "workingHours" to workingHours,
-                    "danceType" to danceType,
-                    "latitude" to latitude,
-                    "longitude" to longitude,
-                    "userId" to user?.uid
-                )
 
-                firestore.collection("dance_clubs")
-                    .add(danceClubData)
-                    .addOnSuccessListener { documentReference ->
-                        Log.d("AddDanceClub", "DocumentSnapshot added with ID: ${documentReference.id}")
-                        navController.popBackStack() // Return to the map screen
-                    }
-                    .addOnFailureListener { e ->
-                        Log.w("AddDanceClub", "Error adding document", e)
-                    }
+                // Validate the date format
+                val isValidDate = try {
+                    val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                    dateFormat.parse(creationDate) != null
+                } catch (e: Exception) {
+                    false
+                }
+
+                if (isValidDate) {
+                    viewModel.addDanceClub(
+                        clubName = clubName,
+                        workingHours = workingHours,
+                        danceType = danceType,
+                        latitude = latitude,
+                        longitude = longitude,
+                        creationDate = creationDate, // Pass creation date
+                        onSuccess = {
+                            isSaving = false
+                            navController.popBackStack() // Return to the map screen
+                        },
+                        onFailure = { e ->
+                            isSaving = false
+                            Log.w("AddDanceClub", "Error adding document", e)
+                        }
+                    )
+                } else {
+                    isSaving = false
+                    // Show an error message or handle invalid date
+                    Log.w("AddDanceClub", "Invalid date format")
+                }
             },
             modifier = Modifier.fillMaxWidth(),
             enabled = !isSaving
