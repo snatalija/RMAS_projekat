@@ -1,3 +1,4 @@
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.*
@@ -12,40 +13,32 @@ class AllDanceClubsViewModel : ViewModel() {
     private val _clubs = MutableStateFlow<List<Club>>(emptyList())
     val clubs: StateFlow<List<Club>> = _clubs.asStateFlow()
 
-    private val _authorNames = MutableStateFlow<Map<String, String>>(emptyMap())
-    val authorNames: StateFlow<Map<String, String>> = _authorNames.asStateFlow()
+    private val _ownerNames = MutableStateFlow<Map<String, String>>(emptyMap())
+    val ownerNames: StateFlow<Map<String, String>> = _ownerNames.asStateFlow()
 
-    private val authorCache = mutableMapOf<String, String>() // Local cache for author names
-
-    init {
-        loadClubs()
-    }
-
-    private fun loadClubs() {
+    fun loadClubs() {
         viewModelScope.launch {
             try {
+                // Fetch all clubs
                 val clubsSnapshot = firestore.collection("dance_clubs").get().await()
                 val clubList = clubsSnapshot.documents.mapNotNull { document ->
-                    document.toObject(Club::class.java)?.copy(ownerId = document.id) // Ensure userId is included
+                    document.toObject(Club::class.java)?.apply { var id = document.id }
                 }
                 _clubs.value = clubList
 
-                // Fetch author names
-                val authorIds = clubList.map { it.ownerId }.distinct()
-                val authorNameMap = mutableMapOf<String, String>()
-                authorIds.forEach { userId ->
-                    // Use cached data if available
-                    if (authorCache.containsKey(userId)) {
-                        authorNameMap[userId] = authorCache[userId]!!
-                    } else {
-                        viewModelScope.launch {
-                            val userName = getUserName(userId)
-                            authorCache[userId] = userName // Cache the result
-                            authorNameMap[userId] = userName
-                            _authorNames.value = authorNameMap // Update authorNames
-                        }
-                    }
+                // Fetch owner names for each club
+                val ownerNamesMap = mutableMapOf<String, String>()
+                for (club in clubList) {
+                    val ownerId = club.userId ?: continue
+                    val ownerName = getUserName(ownerId)
+                    ownerNamesMap[club.id] = ownerName
                 }
+                for (club in clubList) {
+                    Log.d("nikola", "club: " + club.id)
+                    Log.d("nikola", "owner: " + ownerNamesMap[club.id])
+                }
+                _ownerNames.value = ownerNamesMap
+
             } catch (e: Exception) {
                 // Handle error
             }
@@ -54,9 +47,12 @@ class AllDanceClubsViewModel : ViewModel() {
 
     private suspend fun getUserName(userId: String): String {
         return try {
+            Log.d("nikola", userId)
             val userDoc = firestore.collection("users").document(userId).get().await()
             val firstName = userDoc.getString("firstName") ?: ""
             val lastName = userDoc.getString("lastName") ?: ""
+            Log.d("nikola", firstName)
+            Log.d("nikola", lastName)
             "$firstName $lastName".trim()
         } catch (e: Exception) {
             "Unknown"

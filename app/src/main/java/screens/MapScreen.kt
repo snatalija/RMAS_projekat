@@ -81,7 +81,7 @@ fun MapScreen(navController: NavHostController) {
             uiSettings = uiSettings,
             onMapLongClick = { latLng ->
                 // Navigate to AddDanceClubScreen and pass the clicked location
-                navController.navigate("add_dance_club?lat=${latLng.latitude}&lng=${latLng.longitude}")
+                navController.navigate("add_dance_club?latitude=${latLng.latitude}&longitude=${latLng.longitude}")
             }
         ) {
             markers.forEach { markerOptions ->

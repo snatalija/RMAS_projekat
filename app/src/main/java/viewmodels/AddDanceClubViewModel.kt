@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 class AddDanceClubViewModel : ViewModel() {
 
@@ -24,7 +25,10 @@ class AddDanceClubViewModel : ViewModel() {
     ) {
         viewModelScope.launch {
             try {
+                val clubId = UUID.randomUUID().toString() // Generate a unique ID for the club
+
                 val danceClubData = hashMapOf(
+                    "id" to clubId,
                     "name" to clubName,
                     "workingHours" to workingHours,
                     "danceType" to danceType,

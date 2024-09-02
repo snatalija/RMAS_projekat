@@ -17,38 +17,45 @@ import androidx.navigation.NavHostController
 fun AllDanceClubsScreen(navController: NavHostController) {
     val viewModel: AllDanceClubsViewModel = viewModel()
     val clubs by viewModel.clubs.collectAsState()
-    val authorNames by viewModel.authorNames.collectAsState()
+    val ownerNames by viewModel.ownerNames.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.loadClubs()
+    }
 
     Column(modifier = Modifier
         .fillMaxSize()
-        .padding(16.dp)) {
-
+        .padding(16.dp)
+    ) {
         LazyColumn {
             items(clubs) { club ->
-                ClubListItem(club = club, navController = navController, authorNames = authorNames)
+                val ownerName = ownerNames[club.id] ?: "Unknown"
+                ClubListItem(
+                    club = club,
+                    ownerName = ownerName,
+                    onClick = {
+                        navController.navigate("club_detail/${club.id}")
+                    }
+                        )
             }
         }
     }
 }
 
 @Composable
-fun ClubListItem(club: Club, navController: NavHostController, authorNames: Map<String, String>) {
-    val authorName = authorNames[club.ownerId] ?: "Loading..."
+fun ClubListItem(club: Club, ownerName: String,onClick: () -> Unit) {
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
-            .clickable {
-                navController.navigate("club_detail/${club.name}") // Navigate to club detail screen
-            }
+            .clickable(onClick = onClick)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(club.name, style = MaterialTheme.typography.h6)
             Text(club.danceType, style = MaterialTheme.typography.body1)
             Text("Working Hours: ${club.workingHours}", style = MaterialTheme.typography.body2)
-            //Text("Created At: ${club.createdAt}", style = MaterialTheme.typography.body2)
-            Text("Author: $authorName", style = MaterialTheme.typography.body2)
+            Text("Owner: $ownerName", style = MaterialTheme.typography.body2)
         }
     }
 }

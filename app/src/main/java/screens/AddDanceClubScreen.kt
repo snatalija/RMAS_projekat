@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -19,6 +20,8 @@ fun AddDanceClubScreen(navController: NavHostController, latitude: Double, longi
     var danceType by remember { mutableStateOf("") }
     var creationDate by remember { mutableStateOf("") } // New state for creation date
     var isSaving by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") } // State for error message
+
 
     Column(
         modifier = Modifier
@@ -53,9 +56,17 @@ fun AddDanceClubScreen(navController: NavHostController, latitude: Double, longi
             value = creationDate,
             onValueChange = { creationDate = it },
             label = { Text("Creation Date (yyyy-MM-dd)") }, // Assuming date format
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+                    isError = errorMessage.isNotEmpty()
         )
-
+        if (errorMessage.isNotEmpty()) {
+            Text(
+                text = errorMessage,
+                color = Color.Red,
+                style = MaterialTheme.typography.body2,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
@@ -71,6 +82,7 @@ fun AddDanceClubScreen(navController: NavHostController, latitude: Double, longi
                 }
 
                 if (isValidDate) {
+                    errorMessage = ""
                     viewModel.addDanceClub(
                         clubName = clubName,
                         workingHours = workingHours,

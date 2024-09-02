@@ -98,6 +98,7 @@ fun BottomNavigationBar(navController: NavHostController) {
             onClick = {
                 Log.d("BottomNavigationBar", "Navigating to all clubs")
                 navController.navigate("all_clubs")
+
             }
         )
     }
@@ -149,6 +150,7 @@ fun DefaultPreview() {
                 startDestination = "login", // Default start destination for preview
                 modifier = Modifier.padding(innerPadding)
             )
+
         }
     }
 }

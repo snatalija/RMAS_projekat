@@ -46,7 +46,7 @@ class ClubDetailViewModel : ViewModel() {
                 val userId = clubDocument.getString("userId") ?: ""
                 _club.value = clubData
 
-                clubData?.ownerId?.let { ownerId ->
+                clubData?.userId?.let { ownerId ->
                     _ownerName.value = getUserName(userId)
                 }
 
