@@ -15,14 +15,20 @@ class AllDanceClubsViewModel : ViewModel() {
 
     private val _ownerNames = MutableStateFlow<Map<String, String>>(emptyMap())
     val ownerNames: StateFlow<Map<String, String>> = _ownerNames.asStateFlow()
-
     fun loadClubs() {
         viewModelScope.launch {
             try {
-                // Fetch all clubs
                 val clubsSnapshot = firestore.collection("dance_clubs").get().await()
                 val clubList = clubsSnapshot.documents.mapNotNull { document ->
-                    document.toObject(Club::class.java)?.apply { var id = document.id }
+                    val id = document.id
+                    val name = document.getString("name") ?: ""
+                    val danceType = document.getString("danceType") ?: ""
+                    val workingHours = document.getString("workingHours") ?: ""
+                    val userId = document.getString("userId") ?: ""
+                    val hasReviewed = document.getBoolean("hasReviewed") // Retrieve as Boolean?
+                    val averageRating = document.getDouble("averageRating")?.toFloat() ?: 0f
+
+                    Club(id, name, danceType, workingHours, userId, hasReviewed, averageRating)
                 }
                 _clubs.value = clubList
 
@@ -33,14 +39,10 @@ class AllDanceClubsViewModel : ViewModel() {
                     val ownerName = getUserName(ownerId)
                     ownerNamesMap[club.id] = ownerName
                 }
-                for (club in clubList) {
-                    Log.d("nikola", "club: " + club.id)
-                    Log.d("nikola", "owner: " + ownerNamesMap[club.id])
-                }
                 _ownerNames.value = ownerNamesMap
 
             } catch (e: Exception) {
-                // Handle error
+                Log.e("AllDanceClubsViewModel", "Error loading clubs", e)
             }
         }
     }

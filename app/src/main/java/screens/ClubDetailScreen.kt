@@ -98,7 +98,7 @@ fun ClubDetailScreen(navController: NavHostController, clubId: String) {
             if (reviewExists) {
                 Text("You have already reviewed this club.", color = Color.Red, style = MaterialTheme.typography.body2)
             }
-            val pinColor = if (it.hasReviewed) Color.Green else Color.Red
+            val pinColor = if (it.hasReviewed == true) Color.Green else Color.Red
 
         } ?: run {
             Text("Loading...", style = MaterialTheme.typography.h6)
