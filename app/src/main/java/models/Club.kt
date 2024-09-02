@@ -6,5 +6,6 @@ data class Club(
     val danceType: String = "",
     val workingHours: String = "",
     val userId: String = "",
-    val hasReviewed: Boolean = false
+    val hasReviewed: Boolean = false,
+    val averageRating: Float = 0f
 )

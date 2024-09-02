@@ -34,8 +34,12 @@ class ClubDetailViewModel : ViewModel() {
     private val _ownerName = MutableStateFlow("") // New state for owner's name
     val ownerName: StateFlow<String> = _ownerName.asStateFlow()
 
+
     private val _reviewExists = MutableStateFlow(false)
     val reviewExists: StateFlow<Boolean> = _reviewExists.asStateFlow()
+
+    private val _averageRating = MutableStateFlow(0f)
+    val averageRating: StateFlow<Float> = _averageRating.asStateFlow()
 
     fun loadClubDetails(clubId: String) {
         viewModelScope.launch {
@@ -46,19 +50,23 @@ class ClubDetailViewModel : ViewModel() {
                 val userId = clubDocument.getString("userId") ?: ""
                 _club.value = clubData
 
-                clubData?.userId?.let { ownerId ->
+                clubData?.userId?.let { userId ->
                     _ownerName.value = getUserName(userId)
                 }
 
                 // Fetch reviews and map to Review data class
                 val reviewsSnapshot = firestore.collection("dance_clubs").document(clubId).collection("reviews").get().await()
-                _reviews.value = reviewsSnapshot.map { document ->
+                val reviewsList = reviewsSnapshot.map { document ->
                     val reviewText = document.getString("review") ?: ""
-
-                    val userName = getUserName(userId)  // Fetch user name asynchronously
+                    val authorId=document.getString("userId")?:""
+                    val userName = getUserName(authorId)  // Fetch user name asynchronously
                     val reviewRating = document.getLong("rating")?.toInt() ?: 0
                     Review(reviewText, userName, reviewRating)
                 }
+                _reviews.value = reviewsList
+
+                // Calculate average rating
+                _averageRating.value = calculateAverageRating(reviewsList)
 
                 // Check if the current user has already reviewed this club
                 auth.currentUser?.let { user ->
@@ -68,9 +76,11 @@ class ClubDetailViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 // Handle error
+                e.printStackTrace()
             }
         }
     }
+
 
 
     private suspend fun getUserName(userId: String): String {
@@ -82,6 +92,13 @@ class ClubDetailViewModel : ViewModel() {
         } catch (e: Exception) {
             // Handle error
             "Unknown"
+        }
+    }
+    private fun calculateAverageRating(reviews: List<Review>): Float {
+        return if (reviews.isNotEmpty()) {
+            reviews.map { it.rating }.average().toFloat()
+        } else {
+            0f
         }
     }
 
@@ -116,6 +133,10 @@ class ClubDetailViewModel : ViewModel() {
                         val updatedClub = _club.value?.copy(hasReviewed = true)
                         _club.value = updatedClub
                         _reviewExists.value = true
+                        val updatedReviews = _reviews.value + Review(_review.value, getUserName(userId), _rating.value)
+                        _averageRating.value = calculateAverageRating(updatedReviews)
+                        _reviews.value = updatedReviews
+
                     } else {
                         _reviewExists.value = true // Set to true if review already exists
                     }
@@ -137,5 +158,5 @@ class ClubDetailViewModel : ViewModel() {
 data class Review(
     val review: String = "",
     val userName: String = "",
-    val rating: Int = 0
+    val rating: Int=0
 )

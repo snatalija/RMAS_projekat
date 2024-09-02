@@ -27,6 +27,7 @@ fun ClubDetailScreen(navController: NavHostController, clubId: String) {
     val isSaving by viewModel.isSaving.collectAsState()
     val reviewExists by viewModel.reviewExists.collectAsState()
     val ownerName by viewModel.ownerName.collectAsState()
+    val averageRating by viewModel.averageRating.collectAsState()  // Get average rating
 
     LaunchedEffect(clubId) {
         viewModel.loadClubDetails(clubId)
@@ -45,6 +46,9 @@ fun ClubDetailScreen(navController: NavHostController, clubId: String) {
             Text("Owner: $ownerName") // Display the owner's name
             Spacer(modifier = Modifier.height(16.dp))
             // Rating
+            Text("Average Rating: %.1f/5".format(averageRating), style = MaterialTheme.typography.body1)
+            Spacer(modifier = Modifier.height(16.dp))
+
             Text("Rating: $rating/5", style = MaterialTheme.typography.body1)
             Row(
                 modifier = Modifier.padding(vertical = 8.dp),

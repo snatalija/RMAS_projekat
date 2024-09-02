@@ -35,7 +35,8 @@ class AddDanceClubViewModel : ViewModel() {
                     "latitude" to latitude,
                     "longitude" to longitude,
                     "creationDate" to creationDate, // Add creation date
-                    "userId" to user?.uid
+                    "userId" to user?.uid,
+                    "averageRating" to null
                 )
 
                 firestore.collection("dance_clubs")
