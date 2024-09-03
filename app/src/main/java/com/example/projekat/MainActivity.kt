@@ -133,6 +133,8 @@ fun NavigationHost(
         }
         composable("club_detail/{clubId}") { backStackEntry ->
             val clubId = backStackEntry.arguments?.getString("clubId") ?: ""
+            Log.d("MapScreen", "Navigating to ClubDetailScreen with clubId: $clubId")
+
             ClubDetailScreen(navController = navController, clubId = clubId)
         }
     }

@@ -1,5 +1,6 @@
 package com.example.projekat.screens
 
+import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -8,6 +9,7 @@ import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.twotone.Star
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -28,6 +30,7 @@ fun ClubDetailScreen(navController: NavHostController, clubId: String) {
     val reviewExists by viewModel.reviewExists.collectAsState()
     val ownerName by viewModel.ownerName.collectAsState()
     val averageRating by viewModel.averageRating.collectAsState()  // Get average rating
+    Log.d("ClubDetailScreen", "Received clubId: $clubId")
 
     LaunchedEffect(clubId) {
         viewModel.loadClubDetails(clubId)
@@ -39,6 +42,8 @@ fun ClubDetailScreen(navController: NavHostController, clubId: String) {
         .verticalScroll(rememberScrollState())
     ) {
         club?.let {
+            Log.d("ClubDetailViewModel", "Loading club details for clubId: $clubId")
+
             Text("Club Name: ${it.name}", style = MaterialTheme.typography.h5)
             Spacer(modifier = Modifier.height(8.dp))
             Text("Dance Type: ${it.danceType}")
@@ -46,10 +51,12 @@ fun ClubDetailScreen(navController: NavHostController, clubId: String) {
             Text("Owner: $ownerName") // Display the owner's name
             Spacer(modifier = Modifier.height(16.dp))
             // Rating
+            Log.d("ClubDetailScreen", "Average Rating: $averageRating")
+
             Text("Average Rating: %.1f/5".format(averageRating), style = MaterialTheme.typography.body1)
             Spacer(modifier = Modifier.height(16.dp))
 
-            Text("Rating: $rating/5", style = MaterialTheme.typography.body1)
+           // Text("Rating: $rating/5", style = MaterialTheme.typography.body1)
             Row(
                 modifier = Modifier.padding(vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -59,7 +66,7 @@ fun ClubDetailScreen(navController: NavHostController, clubId: String) {
                         onClick = { viewModel.updateRating(i) }
                     ) {
                         Icon(
-                            imageVector = if (i <= rating) Icons.Filled.Star else Icons.Outlined.Star,
+                            imageVector = if (i <= rating) Icons.Filled.Star else Icons.TwoTone.Star,
                             contentDescription = "Rating Star"
                         )
                     }

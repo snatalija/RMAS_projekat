@@ -19,14 +19,13 @@ class AddDanceClubViewModel : ViewModel() {
         danceType: String,
         latitude: Double,
         longitude: Double,
-        creationDate: String, // New parameter
+        creationDate: String,
         onSuccess: () -> Unit,
         onFailure: (Exception) -> Unit
     ) {
         viewModelScope.launch {
             try {
                 val clubId = UUID.randomUUID().toString() // Generate a unique ID for the club
-
                 val danceClubData = hashMapOf(
                     "id" to clubId,
                     "name" to clubName,
@@ -36,7 +35,7 @@ class AddDanceClubViewModel : ViewModel() {
                     "longitude" to longitude,
                     "creationDate" to creationDate, // Add creation date
                     "userId" to user?.uid,
-                    "averageRating" to null
+                    "averageRating" to 0f
                 )
 
                 firestore.collection("dance_clubs")

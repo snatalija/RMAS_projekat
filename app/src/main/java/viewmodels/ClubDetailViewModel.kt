@@ -1,6 +1,7 @@
 package com.example.projekat.screens
 
 import Club
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,6 +43,8 @@ class ClubDetailViewModel : ViewModel() {
     val averageRating: StateFlow<Float> = _averageRating.asStateFlow()
 
     fun loadClubDetails(clubId: String) {
+        Log.d("ClubDetailViewModel", "Loading club details for clubId: $clubId")
+
         viewModelScope.launch {
             try {
                 // Fetch club details
@@ -49,6 +52,7 @@ class ClubDetailViewModel : ViewModel() {
                 val clubData = clubDocument.toObject(Club::class.java)
                 val userId = clubDocument.getString("userId") ?: ""
                 _club.value = clubData
+                Log.d("ClubDetailViewModel", "Fetched club data: $clubData")
 
                 clubData?.userId?.let { userId ->
                     _ownerName.value = getUserName(userId)
@@ -61,20 +65,27 @@ class ClubDetailViewModel : ViewModel() {
                     val authorId=document.getString("userId")?:""
                     val userName = getUserName(authorId)  // Fetch user name asynchronously
                     val reviewRating = document.getLong("rating")?.toInt() ?: 0
+                    Log.d("ClubDetailViewModel", "Review Rating: $reviewRating")
                     Review(reviewText, userName, reviewRating)
                 }
                 _reviews.value = reviewsList
 
                 // Calculate average rating
-                _averageRating.value = calculateAverageRating(reviewsList)
+                val newAverageRating = calculateAverageRating(reviewsList)
+                _averageRating.value = newAverageRating
+                updateAverageRatingInFirestore(clubId, _averageRating.value)
+                Log.d("ClubDetailViewModel", "Calculated average rating: $newAverageRating")
 
                 // Check if the current user has already reviewed this club
                 auth.currentUser?.let { user ->
                     val userReviewDoc = firestore.collection("dance_clubs").document(clubId).collection("reviews").document(user.uid).get().await()
                     _reviewExists.value = userReviewDoc.exists()
+                    Log.d("ClubDetailViewModel", "User has reviewed: ${userReviewDoc.exists()}")
+
                     _club.value = _club.value?.copy(hasReviewed = userReviewDoc.exists())
                 }
             } catch (e: Exception) {
+                Log.e("ClubDetailViewModel", "Error loading club details", e)
                 // Handle error
                 e.printStackTrace()
             }
@@ -90,7 +101,8 @@ class ClubDetailViewModel : ViewModel() {
             val lastName = userDoc.getString("lastName") ?: ""
             "$firstName $lastName".trim()
         } catch (e: Exception) {
-            // Handle error
+            Log.e("ClubDetailViewModel", "Error fetching user name", e)
+
             "Unknown"
         }
     }
@@ -129,19 +141,26 @@ class ClubDetailViewModel : ViewModel() {
                         _review.value = "" // Clear review field
                         _rating.value = 0  // Clear rating
 
-                        // Update club status
-                        val updatedClub = _club.value?.copy(hasReviewed = true)
-                        _club.value = updatedClub
-                        _reviewExists.value = true
                         val updatedReviews = _reviews.value + Review(_review.value, getUserName(userId), _rating.value)
-                        _averageRating.value = calculateAverageRating(updatedReviews)
                         _reviews.value = updatedReviews
+
+                        // Calculate new average rating
+                        val newAverageRating = calculateAverageRating(updatedReviews)
+                        _averageRating.value = newAverageRating
+
+                        // Update club status and average rating in Firestore
+                        val updatedClub = _club.value?.copy(hasReviewed = true, averageRating = newAverageRating)
+                        _club.value = updatedClub
+
+                        firestore.collection("dance_clubs").document(clubId).update("hasReviewed", true, "averageRating", newAverageRating).await()
+                        _reviewExists.value = true
 
                     } else {
                         _reviewExists.value = true // Set to true if review already exists
                     }
                 } catch (e: Exception) {
                     // Handle error
+                    e.printStackTrace()
                 } finally {
                     _isSaving.value = false
                 }
@@ -151,6 +170,15 @@ class ClubDetailViewModel : ViewModel() {
             }
         }
     }
+    private suspend fun updateAverageRatingInFirestore(clubId: String, averageRating: Float) {
+        try {
+            firestore.collection("dance_clubs").document(clubId).update("averageRating", averageRating).await()
+        } catch (e: Exception) {
+            // Handle error
+            e.printStackTrace()
+        }
+    }
+
 }
 
 

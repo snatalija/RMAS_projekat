@@ -1,7 +1,7 @@
 import com.google.firebase.firestore.DocumentId
 
 data class Club(
-    @DocumentId val id: String = "",
+    val id: String = "",
     val name: String = "",
     val danceType: String = "",
     val workingHours: String = "",
