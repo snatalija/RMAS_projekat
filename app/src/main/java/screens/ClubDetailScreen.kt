@@ -18,6 +18,7 @@ import androidx.navigation.NavHostController
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
+import com.google.android.gms.maps.model.Marker
 
 @Composable
 fun ClubDetailScreen(navController: NavHostController, clubId: String) {
@@ -29,7 +30,8 @@ fun ClubDetailScreen(navController: NavHostController, clubId: String) {
     val isSaving by viewModel.isSaving.collectAsState()
     val reviewExists by viewModel.reviewExists.collectAsState()
     val ownerName by viewModel.ownerName.collectAsState()
-    val averageRating by viewModel.averageRating.collectAsState()  // Get average rating
+    val averageRating by viewModel.averageRating.collectAsState()
+
     Log.d("ClubDetailScreen", "Received clubId: $clubId")
 
     LaunchedEffect(clubId) {
@@ -105,10 +107,12 @@ fun ClubDetailScreen(navController: NavHostController, clubId: String) {
             if (reviewExists) {
                 Text("You have already reviewed this club.", color = Color.Red, style = MaterialTheme.typography.body2)
             }
-            val pinColor = if (it.hasReviewed == true) Color.Green else Color.Red
+         //   val pinColor = if (it.hasReviewed == true) Color.Green else Color.Red
 
         } ?: run {
             Text("Loading...", style = MaterialTheme.typography.h6)
         }
     }
+
+
 }

@@ -4,6 +4,8 @@ import Club
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.model.Marker
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -188,6 +190,8 @@ class ClubDetailViewModel : ViewModel() {
             e.printStackTrace()
         }
     }
+
+
 
 }
 

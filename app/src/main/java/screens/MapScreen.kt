@@ -2,6 +2,12 @@ package com.example.projekat.screens
 
 import LocationViewModel
 import android.util.Log
+import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.runtime.*
@@ -18,6 +24,9 @@ import com.google.android.gms.maps.model.MarkerOptions
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.maps.android.compose.*
 import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.ui.Alignment
 
 @Composable
 fun MapScreen(navController: NavHostController) {
@@ -34,9 +43,38 @@ fun MapScreen(navController: NavHostController) {
     var expanded by remember { mutableStateOf(false) }
     var selectedFilter by remember { mutableStateOf("Filter by") }
 
-    // State for dance style filter
-    var danceStyles by remember { mutableStateOf(emptyList<String>()) }
-    var selectedDanceStyle by remember { mutableStateOf<String?>(null) }
+    // State for rating filter visibility
+    var ratingFilterVisible by remember { mutableStateOf(false) }
+
+    // State for style filter visibility
+    var styleFilterVisible by remember { mutableStateOf(false) }
+
+    // State for selected styles
+    var selectedStyles by remember { mutableStateOf(setOf<String>()) }
+
+    // Collect available dance styles
+    val styles by remember {
+        mutableStateOf(mutableListOf<String>())
+    }
+
+    LaunchedEffect(Unit) {
+        firestore.collection("dance_clubs")
+            .get()
+            .addOnSuccessListener { result ->
+                val styleSet = mutableSetOf<String>()
+                result.forEach { document ->
+                    val style = document.getString("danceType")
+                    if (style != null) {
+                        styleSet.add(style)
+                    }
+                }
+                styles.clear()
+                styles.addAll(styleSet)
+            }
+            .addOnFailureListener { exception ->
+                Log.w("MapScreen", "Error getting documents: ", exception)
+            }
+    }
 
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(currentLocation ?: LatLng(43.321445, 21.896104), 15f)
@@ -51,29 +89,16 @@ fun MapScreen(navController: NavHostController) {
     var markerMap by remember { mutableStateOf<Map<LatLng, String>>(emptyMap()) }
     var selectedMarker by remember { mutableStateOf<Marker?>(null) }
 
-    // Load dance styles from Firestore
-    LaunchedEffect(Unit) {
-        firestore.collection("dance_clubs")
-            .get()
-            .addOnSuccessListener { result ->
-                // Collect dance types
-                val styles = result.mapNotNull { it.getString("danceType") }
-                // Get distinct styles
-                danceStyles = styles.distinct()
-            }
-            .addOnFailureListener { exception ->
-                Log.w("MapScreen", "Error getting dance styles: ", exception)
-            }
-    }
-
-    // Load dance club data from Firestore with rating and style filter
-    LaunchedEffect(minRating, maxRating, selectedDanceStyle) {
+    // Load dance club data from Firestore with filters
+    LaunchedEffect(minRating, maxRating, selectedStyles) {
         var query = firestore.collection("dance_clubs")
             .whereGreaterThanOrEqualTo("averageRating", minRating)
             .whereLessThanOrEqualTo("averageRating", maxRating)
 
-        if (selectedDanceStyle != null) {
-            query = query.whereEqualTo("danceType", selectedDanceStyle)
+        // Filter by selected styles
+        if (selectedStyles.isNotEmpty()) {
+            query = query.whereIn("danceType", selectedStyles.toList())
+            Log.d("MapScreen", "Filtering by styles: $selectedStyles")
         }
 
         query.get()
@@ -96,6 +121,7 @@ fun MapScreen(navController: NavHostController) {
                     )
 
                     newMarkerMap[position] = document.id
+                    Log.d("MapScreen", "Adding marker for club: $title at $position with style: ${document.getString("danceType")}")
                 }
                 markers = newMarkers
                 markerMap = newMarkerMap
@@ -108,51 +134,127 @@ fun MapScreen(navController: NavHostController) {
     Column(modifier = Modifier.fillMaxSize()) {
         // Filter by dropdown
         Box(modifier = Modifier.padding(16.dp)) {
-            Text(selectedFilter, style = MaterialTheme.typography.h6, modifier = Modifier.clickable { expanded = true })
+            Text(
+                selectedFilter,
+                style = MaterialTheme.typography.h6,
+                modifier = Modifier
+                    .clickable {
+                        expanded = !expanded // Toggle dropdown visibility
+                    }
+                    .padding(16.dp)
+            )
             DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                 DropdownMenuItem(onClick = {
-                    selectedFilter = "Filter by Rating"
-                    expanded = false
+                    if (selectedFilter != "Filter by Rating") {
+                        selectedFilter = "Filter by Rating"
+                        expanded = false // Close the dropdown
+                        ratingFilterVisible = true // Show rating filter
+                        styleFilterVisible = false // Hide style filter
+                    } else {
+                        expanded = false // Close the dropdown
+                    }
                 }) {
                     Text("Filter by Rating")
                 }
                 DropdownMenuItem(onClick = {
-                    selectedFilter = "Filter by Style"
-                    expanded = false
+                    if (selectedFilter != "Filter by Style") {
+                        selectedFilter = "Filter by Style"
+                        expanded = false // Close the dropdown
+                        styleFilterVisible = true // Show style filter
+                        ratingFilterVisible = false // Hide rating filter
+                    } else {
+                        expanded = false // Close the dropdown
+                    }
                 }) {
                     Text("Filter by Style")
                 }
             }
         }
 
-        if (selectedFilter == "Filter by Rating") {
-            // Rating range sliders
-            Text("Min Rating: ${"%.1f".format(minRating)}", modifier = Modifier.padding(start = 16.dp, end = 16.dp))
-            Slider(
-                value = minRating.toFloat(),
-                onValueChange = { minRating = it.toDouble() },
-                valueRange = 0f..5f,
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp)
-            )
+        AnimatedVisibility(
+            visible = ratingFilterVisible,
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
+            // Rating filter
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .background(MaterialTheme.colors.surface, shape = MaterialTheme.shapes.medium)
+                    .border(1.dp, MaterialTheme.colors.onSurface, MaterialTheme.shapes.medium)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    // Close button
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Close",
+                        modifier = Modifier
+                            .align(Alignment.End)
+                            .clickable { ratingFilterVisible = false }
+                            .padding(8.dp)
+                    )
 
-            Text("Max Rating: ${"%.1f".format(maxRating)}", modifier = Modifier.padding(start = 16.dp, end = 16.dp))
-            Slider(
-                value = maxRating.toFloat(),
-                onValueChange = { maxRating = it.toDouble() },
-                valueRange = 0f..5f,
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp)
-            )
-        } else if (selectedFilter == "Filter by Style") {
-            // Dance style dropdown
-            Box(modifier = Modifier.padding(16.dp)) {
-                Text("Dance Style: ${selectedDanceStyle ?: "Select a style"}", style = MaterialTheme.typography.h6, modifier = Modifier.clickable { expanded = true })
-                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                    danceStyles.forEach { style ->
-                        DropdownMenuItem(onClick = {
-                            selectedDanceStyle = style
-                            expanded = false
-                        }) {
-                            Text(style)
+                    // Rating range sliders
+                    Text("Min Rating: ${"%.1f".format(minRating)}", modifier = Modifier.padding(start = 16.dp, end = 16.dp))
+                    Slider(
+                        value = minRating.toFloat(),
+                        onValueChange = { minRating = it.toDouble() },
+                        valueRange = 0f..5f,
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp)
+                    )
+
+                    Text("Max Rating: ${"%.1f".format(maxRating)}", modifier = Modifier.padding(start = 16.dp, end = 16.dp))
+                    Slider(
+                        value = maxRating.toFloat(),
+                        onValueChange = { maxRating = it.toDouble() },
+                        valueRange = 0f..5f,
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp)
+                    )
+                }
+            }
+        }
+
+        AnimatedVisibility(
+            visible = styleFilterVisible,
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
+            // Style filter
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .background(MaterialTheme.colors.surface, shape = MaterialTheme.shapes.medium)
+                    .border(1.dp, MaterialTheme.colors.onSurface, MaterialTheme.shapes.medium)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    // Close button
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Close",
+                        modifier = Modifier
+                            .align(Alignment.End)
+                            .clickable { styleFilterVisible = false }
+                            .padding(8.dp)
+                    )
+
+                    // Style checkboxes
+                    styles.forEach { style ->
+                        Row(modifier = Modifier.padding(8.dp)) {
+                            Checkbox(
+                                checked = selectedStyles.contains(style),
+                                onCheckedChange = { checked ->
+                                    selectedStyles = if (checked) {
+                                        Log.d("MapScreen", "Selected style: $style")
+                                        selectedStyles + style
+                                    } else {
+                                        Log.d("MapScreen", "Deselected style: $style")
+                                        selectedStyles - style
+                                    }
+                                }
+                            )
+                            Text(text = style, modifier = Modifier.padding(start = 8.dp))
                         }
                     }
                 }
