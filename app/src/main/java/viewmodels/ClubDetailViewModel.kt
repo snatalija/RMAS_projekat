@@ -154,20 +154,30 @@ class ClubDetailViewModel : ViewModel() {
 
                         firestore.collection("dance_clubs").document(clubId).update("hasReviewed", true, "averageRating", newAverageRating).await()
                         _reviewExists.value = true
-
+                        updateUserPoints(userId)
                     } else {
-                        _reviewExists.value = true // Set to true if review already exists
+                        _reviewExists.value = true
                     }
                 } catch (e: Exception) {
-                    // Handle error
                     e.printStackTrace()
                 } finally {
                     _isSaving.value = false
                 }
             } ?: run {
                 _isSaving.value = false
-                // Handle case where user is null
             }
+        }
+    }
+
+    private suspend fun updateUserPoints(userId: String) {
+        try {
+            val userDoc = firestore.collection("users").document(userId).get().await()
+            val currentPoints = userDoc.getLong("points")?.toInt() ?: 0
+            val newPoints = currentPoints + 10 // Example: Add 10 points for submitting a review
+            firestore.collection("users").document(userId).update("points", newPoints).await()
+        } catch (e: Exception) {
+            Log.e("ClubDetailViewModel", "Error updating user points", e)
+            e.printStackTrace()
         }
     }
     private suspend fun updateAverageRatingInFirestore(clubId: String, averageRating: Float) {

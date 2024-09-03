@@ -48,7 +48,8 @@ class RegistrationViewModel : ViewModel() {
                 "firstName" to firstName,
                 "lastName" to lastName,
                 "phoneNumber" to phoneNumber,
-                "profilePictureUrl" to profilePictureUrl
+                "profilePictureUrl" to profilePictureUrl,
+                "points" to 0
             )
 
             firestore.collection("users").document(userId).set(userData).await()

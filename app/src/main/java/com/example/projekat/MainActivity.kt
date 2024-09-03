@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -23,7 +24,9 @@ import com.example.projekat.screens.LoginScreen
 import com.example.projekat.screens.ProfileScreen
 import com.example.projekat.screens.RegistrationScreen
 import com.example.projekat.screens.MapScreen
+import com.example.projekat.screens.RankingScreen
 import com.example.projekat.ui.theme.ProjekatTheme
+import com.google.android.gms.games.leaderboard.Leaderboard
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 
@@ -101,6 +104,16 @@ fun BottomNavigationBar(navController: NavHostController) {
 
             }
         )
+        BottomNavigationItem(
+            icon = { Icon(imageVector = Icons.Filled.Star, contentDescription = "Rankings") },
+            label = { Text("Rankings") },
+            selected = currentRoute == "rankings",
+            onClick = {
+                navController.navigate("rankings") {
+                    popUpTo("rankings") { inclusive = true }
+                }
+            }
+        )
     }
 }
 
@@ -136,6 +149,9 @@ fun NavigationHost(
             Log.d("MapScreen", "Navigating to ClubDetailScreen with clubId: $clubId")
 
             ClubDetailScreen(navController = navController, clubId = clubId)
+        }
+        composable("rankings") {
+            RankingScreen()
         }
     }
 }

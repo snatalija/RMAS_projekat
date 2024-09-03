@@ -72,6 +72,7 @@ dependencies {
     implementation ("androidx.compose.ui:ui-tooling-preview:1.4.0")
     implementation(libs.androidx.runtime.livedata)
     implementation(libs.androidx.lifecycle.service)
+    implementation(libs.play.services.games)
     debugImplementation ("androidx.compose.ui:ui-tooling:1.4.0")
     implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.0") // Proverite najnoviju verziju
     implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.0") // Proverite najnoviju verziju

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import java.util.UUID
 
 class AddDanceClubViewModel : ViewModel() {
@@ -42,6 +43,9 @@ class AddDanceClubViewModel : ViewModel() {
                     .add(danceClubData)
                     .addOnSuccessListener { documentReference ->
                         Log.d("AddDanceClub", "DocumentSnapshot added with ID: ${documentReference.id}")
+                        user?.uid?.let { userId ->
+                            updateUserPoints(userId, 15) // Add 15 points
+                        }
                         onSuccess()
                     }
                     .addOnFailureListener { e ->
@@ -50,6 +54,19 @@ class AddDanceClubViewModel : ViewModel() {
                     }
             } catch (e: Exception) {
                 onFailure(e)
+            }
+        }
+    }
+    private fun updateUserPoints(userId: String, pointsToAdd: Int) {
+        viewModelScope.launch {
+            try {
+                val userDoc = firestore.collection("users").document(userId).get().await()
+                val currentPoints = userDoc.getLong("points")?.toInt() ?: 0
+                val newPoints = currentPoints + pointsToAdd
+                firestore.collection("users").document(userId).update("points", newPoints).await()
+                Log.d("AddDanceClub", "User points updated: $newPoints")
+            } catch (e: Exception) {
+                Log.e("AddDanceClub", "Error updating user points", e)
             }
         }
     }
