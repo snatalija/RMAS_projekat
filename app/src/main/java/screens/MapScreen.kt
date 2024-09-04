@@ -62,6 +62,12 @@ fun MapScreen(navController: NavHostController) {
     // Collect available dance styles
     val styles = remember { mutableStateListOf<String>() }
 
+    var radiusFilterVisible by remember { mutableStateOf(false) }
+
+    // State for selected radius (in kilometers)
+    var selectedRadius by remember { mutableStateOf(5.0) }
+
+
     LaunchedEffect(Unit) {
         firestore.collection("dance_clubs")
             .get()
@@ -96,9 +102,13 @@ fun MapScreen(navController: NavHostController) {
     var markers by remember { mutableStateOf(emptyList<MarkerOptions>()) }
     var markerMap by remember { mutableStateOf<Map<LatLng, String>>(emptyMap()) }
     var selectedMarker by remember { mutableStateOf<Marker?>(null) }
-
+    LaunchedEffect(currentLocation) {
+        currentLocation?.let {
+            cameraPositionState.position = CameraPosition.fromLatLngZoom(LatLng(it.latitude, it.longitude), 15f)
+        }
+    }
     // Load dance club data from Firestore with filters
-    LaunchedEffect(minRating, maxRating, selectedStyles) {
+    LaunchedEffect(minRating, maxRating, selectedStyles, selectedRadius) {
         var query = firestore.collection("dance_clubs")
             .whereGreaterThanOrEqualTo("averageRating", minRating)
             .whereLessThanOrEqualTo("averageRating", maxRating)
@@ -119,18 +129,21 @@ fun MapScreen(navController: NavHostController) {
                     val title = document.getString("name") ?: ""
                     val snippet = "Dance Type: ${document.getString("danceType")}, Working Hours: ${document.getString("workingHours")}"
                     val position = LatLng(lat, lng)
-                    Log.d("MapScreen","ODAVDE")
-                    Log.d("MapScreen", "Adding marker for club: $title at $lat and $lng with style: ${document.getString("danceType")}")
+                    val distance = currentLocation?.let {
+                        calculateDistance(LatLng(it.latitude, it.longitude), position)
+                    } ?: Double.MAX_VALUE
 
-                    newMarkers.add(
-                        MarkerOptions()
-                            .position(position)
-                            .title(title)
-                            .snippet(snippet)
-                    )
+                    // Add marker if within selected radius
+                    if (distance <= selectedRadius * 1000) { // Convert km to meters
+                        newMarkers.add(
+                            MarkerOptions()
+                                .position(position)
+                                .title(title)
+                                .snippet(snippet)
+                        )
 
-                    newMarkerMap[position] = document.id
-                    Log.d("MapScreen", "Adding marker for club: $title at $position with style: ${document.getString("danceType")}")
+                        newMarkerMap[position] = document.id
+                    }
                 }
                 markers = newMarkers
                 markerMap = newMarkerMap
@@ -166,6 +179,7 @@ fun MapScreen(navController: NavHostController) {
                         expanded = false // Close the dropdown
                         ratingFilterVisible = true // Show rating filter
                         styleFilterVisible = false // Hide style filter
+                        radiusFilterVisible = false // Hide radius filter
                     } else {
                         expanded = false // Close the dropdown
                     }
@@ -178,11 +192,25 @@ fun MapScreen(navController: NavHostController) {
                         expanded = false // Close the dropdown
                         styleFilterVisible = true // Show style filter
                         ratingFilterVisible = false // Hide rating filter
+                        radiusFilterVisible = false // Hide radius filter
                     } else {
                         expanded = false // Close the dropdown
                     }
                 }) {
                     Text("Filter by Style")
+                }
+                DropdownMenuItem(onClick = {
+                    if (selectedFilter != "Filter by Radius") {
+                        selectedFilter = "Filter by Radius"
+                        expanded = false // Close the dropdown
+                        radiusFilterVisible = true // Show radius filter
+                        ratingFilterVisible = false // Hide rating filter
+                        styleFilterVisible = false // Hide style filter
+                    } else {
+                        expanded = false // Close the dropdown
+                    }
+                }) {
+                    Text("Filter by Radius")
                 }
             }
         }
@@ -207,7 +235,10 @@ fun MapScreen(navController: NavHostController) {
                         contentDescription = "Close",
                         modifier = Modifier
                             .align(Alignment.End)
-                            .clickable { ratingFilterVisible = false }
+                            .clickable {
+                                selectedFilter = "Filter by"
+                                ratingFilterVisible = false
+                            }
                             .padding(8.dp)
                     )
 
@@ -236,6 +267,46 @@ fun MapScreen(navController: NavHostController) {
                 }
             }
         }
+        AnimatedVisibility(
+            visible = radiusFilterVisible,
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .background(MaterialTheme.colors.surface, shape = MaterialTheme.shapes.medium)
+                    .border(1.dp, MaterialTheme.colors.onSurface, MaterialTheme.shapes.medium)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    // Close button
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Close",
+                        modifier = Modifier
+                            .align(Alignment.End)
+                            .clickable {
+                                selectedFilter = "Filter by"
+                                radiusFilterVisible = false
+                            }
+                            .padding(8.dp)
+                    )
+
+                    // Radius range slider
+                    Text(
+                        "Selected Radius: ${"%.1f".format(selectedRadius)} km",
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp)
+                    )
+                    Slider(
+                        value = selectedRadius.toFloat(),
+                        onValueChange = { selectedRadius = it.toDouble() },
+                        valueRange = 1f..50f, // Assuming 1 km to 50 km as reasonable range
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp)
+                    )
+                }
+            }
+        }
 
         AnimatedVisibility(
             visible = styleFilterVisible,
@@ -257,7 +328,10 @@ fun MapScreen(navController: NavHostController) {
                         contentDescription = "Close",
                         modifier = Modifier
                             .align(Alignment.End)
-                            .clickable { styleFilterVisible = false }
+                            .clickable {
+                                selectedFilter = "Filter by"
+                                styleFilterVisible = false
+                            }
                             .padding(8.dp)
                     )
 
@@ -289,7 +363,9 @@ fun MapScreen(navController: NavHostController) {
             properties = mapProperties,
             uiSettings = uiSettings,
             onMapLongClick = { latLng ->
-                navController.navigate("add_dance_club?latitude=${latLng.latitude}&longitude=${latLng.longitude}")
+                currentLocation?.let {
+                    navController.navigate("add_dance_club?latitude=${it.latitude}&longitude=${it.longitude}")
+                }
             }
         ) {
             key(markers) {
@@ -331,24 +407,58 @@ fun MapScreen(navController: NavHostController) {
 fun ServiceControl() {
     val context = LocalContext.current
 
+    // State for service status
+    var isServiceRunning by remember { mutableStateOf(false) }
+
+    // Function to start the service
+    fun startService() {
+        val serviceIntent = Intent(context, LocationService::class.java)
+        context.startForegroundService(serviceIntent)
+        isServiceRunning = true
+    }
+
+    // Function to stop the service
+    fun stopService() {
+        val serviceIntent = Intent(context, LocationService::class.java)
+        context.stopService(serviceIntent)
+        isServiceRunning = false
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colors.surface, shape = MaterialTheme.shapes.medium),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Button(onClick = {
-            val serviceIntent = Intent(context, LocationService::class.java)
-            context.startForegroundService(serviceIntent)
-        }) {
+        Button(
+            onClick = { startService() },
+            enabled = !isServiceRunning // Disable if service is running
+        ) {
             Text("Start Service")
         }
 
-        Button(onClick = {
-            val serviceIntent = Intent(context, LocationService::class.java)
-            context.stopService(serviceIntent)
-        }) {
+        Button(
+            onClick = { stopService() },
+            enabled = isServiceRunning // Disable if service is not running
+        ) {
             Text("Stop Service")
         }
     }
+}
+fun calculateDistance(start: LatLng, end: LatLng): Double {
+    val result = FloatArray(1)
+    android.location.Location.distanceBetween(
+        start.latitude, start.longitude,
+        end.latitude, end.longitude,
+        result
+    )
+    val distance = result[0].toDouble()
+
+    // Log coordinates and distance
+    Log.d(
+        "DistanceCalculation",
+        "Start coordinates: (${start.latitude}, ${start.longitude}), End coordinates: (${end.latitude}, ${end.longitude}), Distance: $distance meters"
+    )
+
+    return distance
 }

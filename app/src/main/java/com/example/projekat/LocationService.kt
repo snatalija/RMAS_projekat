@@ -23,6 +23,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 import android.os.Looper
+import kotlin.random.Random
 
 class LocationService : Service() {
 
@@ -36,7 +37,7 @@ class LocationService : Service() {
     override fun onCreate() {
         super.onCreate()
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-        sendNotification("Location Service Started", "App is now tracking your location.")
+        sendNotification(1,"Location Service Started", "App is now tracking your location.")
     }
 
     @SuppressLint("MissingPermission", "ForegroundServiceType")
@@ -77,6 +78,7 @@ class LocationService : Service() {
         firestore.collection("dance_clubs")
             .get()
             .addOnSuccessListener { result ->
+                val nearbyClubs = mutableListOf<String>()
                 result.forEach { document ->
                     val lat = document.getDouble("latitude") ?: 0.0
                     val lng = document.getDouble("longitude") ?: 0.0
@@ -87,19 +89,27 @@ class LocationService : Service() {
 
                     val distance = location.distanceTo(danceClubLocation)
                     if (distance <= NEARBY_THRESHOLD_METERS) {
+                        val clubName = document.getString("name") ?: "Unknown Club"
+                        nearbyClubs.add("$clubName - ${distance.toInt()} meters away")
                         sendNotification(
+                            clubName.hashCode(),
                             "Nearby Dance Club",
-                            "You are near ${document.getString("name")}. Check it out!"
+                            "You are near $clubName. Distance: ${distance.toInt()} meters."
                         )
                     }
+                }
+                // Optional: Log or handle all nearby clubs' names
+                if (nearbyClubs.isNotEmpty()) {
+                    Log.d("LocationService", "Nearby dance clubs: ${nearbyClubs.joinToString(", ")}")
+                } else {
+                    Log.d("LocationService", "No nearby dance clubs found.")
                 }
             }
             .addOnFailureListener { exception ->
                 Log.w("LocationService", "Error getting dance clubs: ", exception)
             }
     }
-
-    private fun sendNotification(title: String, message: String) {
+    private fun sendNotification(id: Int, title: String, message: String) {
         val notificationManager =
             getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -134,7 +144,7 @@ class LocationService : Service() {
             .build()
 
         // Prikazivanje notifikacije
-        notificationManager.notify(1, notification)
+        notificationManager.notify(id, notification)
     }
 
 
@@ -145,6 +155,6 @@ class LocationService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         fusedLocationClient.removeLocationUpdates(locationCallback)
-        sendNotification("Location Service Stopped", "App is no longer tracking your location.")
+        sendNotification(1,"Location Service Stopped", "App is no longer tracking your location.")
     }
 }
