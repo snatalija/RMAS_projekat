@@ -103,6 +103,17 @@ class LocationService : Service() {
         val notificationManager =
             getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
+        // Kreiranje intent-a koji će se pokrenuti kada se klikne na notifikaciju
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+
+        // Kreiranje PendingIntent-a koji će startovati MainActivity
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Kreiranje Notification Channel-a za Android 8.0+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
@@ -112,15 +123,20 @@ class LocationService : Service() {
             notificationManager.createNotificationChannel(channel)
         }
 
+        // Kreiranje notifikacije sa pending intent-om
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
             .setContentText(message)
-            .setSmallIcon(R.drawable.ic_notification) // Replace with your notification icon
+            .setSmallIcon(R.drawable.ic_notification) // Zamenite vašom ikonicom za notifikaciju
+            .setContentIntent(pendingIntent) // Dodavanje PendingIntent-a
+            .setAutoCancel(true) // Automatski zatvara notifikaciju kada se klikne na nju
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
 
+        // Prikazivanje notifikacije
         notificationManager.notify(1, notification)
     }
+
 
     override fun onBind(intent: Intent?): IBinder? {
         return null
