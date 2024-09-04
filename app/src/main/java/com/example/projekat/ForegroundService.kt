@@ -1,104 +1,89 @@
+package com.example.projekat
+
 import android.Manifest
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
+import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.location.Location
 import android.os.Build
+import android.os.IBinder
+import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
-import androidx.lifecycle.LifecycleService
 import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationCallback
-import com.google.android.gms.location.LocationRequest
-import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
-import com.example.projekat.MainActivity
-import com.example.projekat.R
+class ForegroundService : Service() {
 
-class LocationService : LifecycleService() {
-
-    private lateinit var fusedLocationClient: FusedLocationProviderClient
-    private val locationRequest = LocationRequest.create().apply {
-        interval = 10000 // 10 seconds
-        fastestInterval = 5000 // 5 seconds
-        priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-    }
-
-    private val locationCallback = object : LocationCallback() {
-        override fun onLocationResult(locationResult: LocationResult) {
-            super.onLocationResult(locationResult)
-            val location = locationResult.lastLocation
-            // Send location to server
-            // Check for nearby objects/users and show notification if needed
-        }
+    companion object {
+        const val CHANNEL_ID = "MyForegroundServiceChannel"
+        const val START_NOTIFICATION_ID = 1
+        const val STOP_NOTIFICATION_ID = 2
     }
 
     override fun onCreate() {
         super.onCreate()
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-
-        // Start location updates
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            // Permissions are not granted; consider requesting them if needed
-            return
-        }
-        fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null)
-
-        // Create and show the notification
-        val notification = createNotification()
-        startForeground(NOTIFICATION_ID, notification)
+        createNotificationChannel()
     }
 
-    private fun createNotification(): Notification {
-        val channelId = createNotificationChannel()
-        val notificationIntent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
-        val pendingIntent: PendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE)
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        sendStartNotification()
 
-        return NotificationCompat.Builder(this, channelId)
-            .setContentTitle("Location Service")
-            .setContentText("Tracking your location...")
-            .setSmallIcon(R.drawable.location) // Replace with your icon
-            .setContentIntent(pendingIntent)
-            .setOngoing(true)
+        val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("Foreground Service")
+            .setContentText("Service is running")
+            .setSmallIcon(R.drawable.ic_notification) // Ensure you have this drawable resource
             .build()
-    }
 
-    private fun createNotificationChannel(): String {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "Location Service Channel",
-                NotificationManager.IMPORTANCE_DEFAULT
-            ).apply {
-                description = "Channel for location service"
-            }
-            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            manager.createNotificationChannel(channel)
-            return CHANNEL_ID
-        }
-        return ""
+        startForeground(START_NOTIFICATION_ID, notification)
+
+        // Implement your service logic here
+
+        return START_STICKY
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        // Stop location updates
-        fusedLocationClient.removeLocationUpdates(locationCallback)
+        sendStopNotification()
     }
 
-    companion object {
-        private const val CHANNEL_ID = "LocationServiceChannel"
-        private const val NOTIFICATION_ID = 1
+    override fun onBind(intent: Intent?): IBinder? {
+        return null
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val serviceChannel = NotificationChannel(
+                CHANNEL_ID,
+                "Foreground Service Channel",
+                NotificationManager.IMPORTANCE_DEFAULT
+            )
+            val manager = getSystemService(NotificationManager::class.java)
+            manager.createNotificationChannel(serviceChannel)
+        }
+    }
+
+    private fun sendStartNotification() {
+        val startNotification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("Service Started")
+            .setContentText("The service has started successfully.")
+            .setSmallIcon(R.drawable.ic_notification) // Ensure you have this drawable resource
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .build()
+
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.notify(START_NOTIFICATION_ID, startNotification)
+    }
+
+    private fun sendStopNotification() {
+        val stopNotification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("Service Stopped")
+            .setContentText("The service has stopped.")
+            .setSmallIcon(R.drawable.ic_notification) // Ensure you have this drawable resource
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .build()
+
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.notify(STOP_NOTIFICATION_ID, stopNotification)
     }
 }

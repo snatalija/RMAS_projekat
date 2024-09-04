@@ -27,14 +27,21 @@ import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.Alignment
+import android.content.Intent
+import android.content.Context
+import android.os.Build
+import androidx.annotation.RequiresApi
+import androidx.compose.ui.graphics.Color
+import com.example.projekat.LocationService
 
+
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MapScreen(navController: NavHostController) {
     val locationViewModel: LocationViewModel = viewModel()
     val currentLocation by locationViewModel.currentLocation.observeAsState()
     val firestore = FirebaseFirestore.getInstance()
     val context = LocalContext.current
-
     // State for rating range
     var minRating by remember { mutableStateOf(0.0) }
     var maxRating by remember { mutableStateOf(5.0) }
@@ -53,9 +60,7 @@ fun MapScreen(navController: NavHostController) {
     var selectedStyles by remember { mutableStateOf(setOf<String>()) }
 
     // Collect available dance styles
-    val styles by remember {
-        mutableStateOf(mutableListOf<String>())
-    }
+    val styles = remember { mutableStateListOf<String>() }
 
     LaunchedEffect(Unit) {
         firestore.collection("dance_clubs")
@@ -76,9 +81,12 @@ fun MapScreen(navController: NavHostController) {
             }
     }
 
+
     val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(currentLocation ?: LatLng(43.321445, 21.896104), 15f)
+        position =
+            CameraPosition.fromLatLngZoom(currentLocation ?: LatLng(43.321445, 21.896104), 15f)
     }
+
     val uiSettings by remember {
         mutableStateOf(MapUiSettings(zoomControlsEnabled = true, myLocationButtonEnabled = true))
     }
@@ -95,7 +103,6 @@ fun MapScreen(navController: NavHostController) {
             .whereGreaterThanOrEqualTo("averageRating", minRating)
             .whereLessThanOrEqualTo("averageRating", maxRating)
 
-        // Filter by selected styles
         if (selectedStyles.isNotEmpty()) {
             query = query.whereIn("danceType", selectedStyles.toList())
             Log.d("MapScreen", "Filtering by styles: $selectedStyles")
@@ -112,6 +119,8 @@ fun MapScreen(navController: NavHostController) {
                     val title = document.getString("name") ?: ""
                     val snippet = "Dance Type: ${document.getString("danceType")}, Working Hours: ${document.getString("workingHours")}"
                     val position = LatLng(lat, lng)
+                    Log.d("MapScreen","ODAVDE")
+                    Log.d("MapScreen", "Adding marker for club: $title at $lat and $lng with style: ${document.getString("danceType")}")
 
                     newMarkers.add(
                         MarkerOptions()
@@ -131,7 +140,14 @@ fun MapScreen(navController: NavHostController) {
             }
     }
 
+
     Column(modifier = Modifier.fillMaxSize()) {
+        // Service control buttons
+        ServiceControl()
+
+        // Spacer to separate service control from the rest of the content
+        Spacer(modifier = Modifier.height(8.dp))
+
         // Filter by dropdown
         Box(modifier = Modifier.padding(16.dp)) {
             Text(
@@ -196,7 +212,10 @@ fun MapScreen(navController: NavHostController) {
                     )
 
                     // Rating range sliders
-                    Text("Min Rating: ${"%.1f".format(minRating)}", modifier = Modifier.padding(start = 16.dp, end = 16.dp))
+                    Text(
+                        "Min Rating: ${"%.1f".format(minRating)}",
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp)
+                    )
                     Slider(
                         value = minRating.toFloat(),
                         onValueChange = { minRating = it.toDouble() },
@@ -204,7 +223,10 @@ fun MapScreen(navController: NavHostController) {
                         modifier = Modifier.padding(start = 16.dp, end = 16.dp)
                     )
 
-                    Text("Max Rating: ${"%.1f".format(maxRating)}", modifier = Modifier.padding(start = 16.dp, end = 16.dp))
+                    Text(
+                        "Max Rating: ${"%.1f".format(maxRating)}",
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp)
+                    )
                     Slider(
                         value = maxRating.toFloat(),
                         onValueChange = { maxRating = it.toDouble() },
@@ -246,10 +268,8 @@ fun MapScreen(navController: NavHostController) {
                                 checked = selectedStyles.contains(style),
                                 onCheckedChange = { checked ->
                                     selectedStyles = if (checked) {
-                                        Log.d("MapScreen", "Selected style: $style")
                                         selectedStyles + style
                                     } else {
-                                        Log.d("MapScreen", "Deselected style: $style")
                                         selectedStyles - style
                                     }
                                 }
@@ -269,7 +289,6 @@ fun MapScreen(navController: NavHostController) {
             properties = mapProperties,
             uiSettings = uiSettings,
             onMapLongClick = { latLng ->
-                // Navigate to AddDanceClubScreen and pass the clicked location
                 navController.navigate("add_dance_club?latitude=${latLng.latitude}&longitude=${latLng.longitude}")
             }
         ) {
@@ -280,7 +299,6 @@ fun MapScreen(navController: NavHostController) {
                     snippet = markerOptions.snippet,
                     onClick = { marker ->
                         selectedMarker = marker
-                        // Navigate to ClubDetailScreen with the club ID
                         val clubId = markerMap[marker.position]
                         if (clubId != null) {
                             Log.d("MapScreen", "Navigating to ClubDetailScreen with ID: $clubId")
@@ -291,7 +309,35 @@ fun MapScreen(navController: NavHostController) {
                         true
                     }
                 )
+                Log.d("MapScreen", "Marker added: ${markerOptions.title} at ${markerOptions.position.latitude}, ${markerOptions.position.longitude}")
+
             }
+        }
+    }
+}
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+fun ServiceControl() {
+    val context = LocalContext.current
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colors.surface, shape = MaterialTheme.shapes.medium),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Button(onClick = {
+            val serviceIntent = Intent(context, LocationService::class.java)
+            context.startForegroundService(serviceIntent)
+        }) {
+            Text("Start Service")
+        }
+
+        Button(onClick = {
+            val serviceIntent = Intent(context, LocationService::class.java)
+            context.stopService(serviceIntent)
+        }) {
+            Text("Stop Service")
         }
     }
 }

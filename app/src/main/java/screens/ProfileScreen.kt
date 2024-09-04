@@ -4,10 +4,13 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -40,59 +43,45 @@ fun ProfileScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
     ) {
         userProfile.profilePictureUrl?.let {
             Image(
                 painter = rememberImagePainter(data = it),
-                contentDescription = null,
-                modifier = Modifier.size(128.dp)
+                contentDescription = "Profile Picture",
+                modifier = Modifier
+                    .size(128.dp)
+                    .clip(MaterialTheme.shapes.medium)
+                    .background(MaterialTheme.colors.surface)
             )
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
             value = userProfile.firstName,
             onValueChange = { firstName = it },
-            label = { Text("First Name") }
+            label = { Text("First Name") },
+            modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = userProfile.lastName,
             onValueChange = { lastName = it },
-            label = { Text("Last Name") }
+            label = { Text("Last Name") },
+            modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = userProfile.phoneNumber,
             onValueChange = { phoneNumber = it },
-            label = { Text("Phone Number") }
+            label = { Text("Phone Number") },
+            modifier = Modifier.fillMaxWidth()
         )
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Button(onClick = {
-            launcher.launch("image/*")
-        }) {
-            Text("Change Profile Picture")
-        }
-
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(onClick = {
-            coroutineScope.launch {
-                viewModel.updateUserProfile(
-                    firstName = firstName,
-                    lastName = lastName,
-                    phoneNumber = phoneNumber,
-                    profilePictureUrl = profilePictureUri?.toString()
-                )
-            }
-        }) {
-            Text("Save Changes")
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
 
         Button(onClick = {
             coroutineScope.launch {

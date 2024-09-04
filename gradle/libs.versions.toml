@@ -21,6 +21,7 @@ roomRuntimeAndroid = "2.7.0-alpha07"
 workRuntimeKtx = "2.9.1"
 runtimeLivedata = "1.6.8"
 playServicesGames = "23.2.0"
+media3Common = "1.4.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -49,6 +50,7 @@ androidx-room-runtime-android = { group = "androidx.room", name = "room-runtime-
 androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workRuntimeKtx" }
 androidx-runtime-livedata = { group = "androidx.compose.runtime", name = "runtime-livedata", version.ref = "runtimeLivedata" }
 play-services-games = { group = "com.google.android.gms", name = "play-services-games", version.ref = "playServicesGames" }
+androidx-media3-common = { group = "androidx.media3", name = "media3-common", version.ref = "media3Common" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

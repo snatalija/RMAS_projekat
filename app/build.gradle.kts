@@ -11,7 +11,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.projekat"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
@@ -73,6 +73,7 @@ dependencies {
     implementation(libs.androidx.runtime.livedata)
     implementation(libs.androidx.lifecycle.service)
     implementation(libs.play.services.games)
+    implementation(libs.androidx.media3.common)
     debugImplementation ("androidx.compose.ui:ui-tooling:1.4.0")
     implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.0") // Proverite najnoviju verziju
     implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.0") // Proverite najnoviju verziju
@@ -83,6 +84,8 @@ dependencies {
 
     // Permissions
     implementation ("com.google.accompanist:accompanist-permissions:0.35.2-beta")
+    implementation("io.coil-kt:coil-compose:2.4.0")
+
 
     // Firebase
     implementation(platform("com.google.firebase:firebase-bom:33.1.2"))

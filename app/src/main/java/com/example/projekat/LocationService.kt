@@ -1,104 +1,134 @@
+package com.example.projekat
+
 import android.Manifest
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
+import android.annotation.SuppressLint
+import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.location.Location
 import android.os.Build
+import android.os.IBinder
+import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
-import androidx.lifecycle.LifecycleService
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationCallback
-import com.google.android.gms.location.LocationRequest
-import com.google.android.gms.location.LocationResult
-import com.google.android.gms.location.LocationServices
-import com.example.projekat.R
 import com.example.projekat.MainActivity
+import com.example.projekat.R
+import com.google.android.gms.location.*
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.sqrt
+import android.os.Looper
 
-class UserLocationService : LifecycleService() {
+class LocationService : Service() {
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
-    private val locationRequest = LocationRequest.create().apply {
-        interval = 10000 // 10 seconds
-        fastestInterval = 5000 // 5 seconds
-        priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-    }
-
-    private val locationCallback = object : LocationCallback() {
-        override fun onLocationResult(locationResult: LocationResult) {
-            super.onLocationResult(locationResult)
-            val location = locationResult.lastLocation
-            // Send location to server
-            // Check for nearby objects/users and show notification if needed
-        }
-    }
+    private lateinit var locationCallback: LocationCallback
+    private lateinit var currentLocation: Location
+    private val firestore = FirebaseFirestore.getInstance()
+    private val CHANNEL_ID = "LocationServiceChannel"
+    private val NEARBY_THRESHOLD_METERS = 2000 // 2 km
 
     override fun onCreate() {
         super.onCreate()
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-
-        // Start location updates
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            // TODO: Consider requesting missing permissions
-            return
-        }
-        fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null)
-
-        // Create and show the notification
-        val notification = createNotification()
-        startForeground(NOTIFICATION_ID, notification)
+        sendNotification("Location Service Started", "App is now tracking your location.")
     }
 
-    private fun createNotification(): Notification {
-        val channelId = createNotificationChannel()
-        val notificationIntent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+    @SuppressLint("MissingPermission", "ForegroundServiceType")
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        locationCallback = object : LocationCallback() {
+            override fun onLocationResult(locationResult: LocationResult) {
+                locationResult.locations.forEach { location ->
+                    currentLocation = location
+                    checkNearbyDanceClubs(location)
+                }
+            }
         }
-        val pendingIntent: PendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE)
 
-        return NotificationCompat.Builder(this, channelId)
+        fusedLocationClient.requestLocationUpdates(
+            LocationRequest.create().apply {
+                interval = 10000 // 10 seconds
+                fastestInterval = 5000 // 5 seconds
+                priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+            },
+            locationCallback,
+            Looper.getMainLooper()
+        )
+
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Location Service")
-            .setContentText("Tracking your location...")
-            .setSmallIcon(R.drawable.location) // Replace with your icon
-            .setContentIntent(pendingIntent)
-            .setOngoing(true)
+            .setContentText("Tracking your location")
+            .setSmallIcon(R.drawable.ic_notification) // Replace with your notification icon
+            .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
+
+        startForeground(1, notification)
+
+        return START_STICKY
     }
 
-    private fun createNotificationChannel(): String {
+
+    private fun checkNearbyDanceClubs(location: Location) {
+        firestore.collection("dance_clubs")
+            .get()
+            .addOnSuccessListener { result ->
+                result.forEach { document ->
+                    val lat = document.getDouble("latitude") ?: 0.0
+                    val lng = document.getDouble("longitude") ?: 0.0
+                    val danceClubLocation = Location("").apply {
+                        latitude = lat
+                        longitude = lng
+                    }
+
+                    val distance = location.distanceTo(danceClubLocation)
+                    if (distance <= NEARBY_THRESHOLD_METERS) {
+                        sendNotification(
+                            "Nearby Dance Club",
+                            "You are near ${document.getString("name")}. Check it out!"
+                        )
+                    }
+                }
+            }
+            .addOnFailureListener { exception ->
+                Log.w("LocationService", "Error getting dance clubs: ", exception)
+            }
+    }
+
+    private fun sendNotification(title: String, message: String) {
+        val notificationManager =
+            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "Location Service Channel",
-                NotificationManager.IMPORTANCE_DEFAULT
-            ).apply {
-                description = "Channel for location service"
-            }
-            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            manager.createNotificationChannel(channel)
-            return CHANNEL_ID
+                NotificationManager.IMPORTANCE_LOW
+            )
+            notificationManager.createNotificationChannel(channel)
         }
-        return ""
+
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setSmallIcon(R.drawable.ic_notification) // Replace with your notification icon
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+
+        notificationManager.notify(1, notification)
+    }
+
+    override fun onBind(intent: Intent?): IBinder? {
+        return null
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        // Stop location updates
         fusedLocationClient.removeLocationUpdates(locationCallback)
-    }
-
-    companion object {
-        private const val CHANNEL_ID = "LocationServiceChannel"
-        private const val NOTIFICATION_ID = 1
+        sendNotification("Location Service Stopped", "App is no longer tracking your location.")
     }
 }
