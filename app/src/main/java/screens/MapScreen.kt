@@ -292,25 +292,36 @@ fun MapScreen(navController: NavHostController) {
                 navController.navigate("add_dance_club?latitude=${latLng.latitude}&longitude=${latLng.longitude}")
             }
         ) {
-            markers.forEach { markerOptions ->
-                Marker(
-                    state = rememberMarkerState(position = markerOptions.position),
-                    title = markerOptions.title,
-                    snippet = markerOptions.snippet,
-                    onClick = { marker ->
-                        selectedMarker = marker
-                        val clubId = markerMap[marker.position]
-                        if (clubId != null) {
-                            Log.d("MapScreen", "Navigating to ClubDetailScreen with ID: $clubId")
-                            navController.navigate("club_detail/$clubId")
-                        } else {
-                            Log.w("MapScreen", "No club ID found for marker at ${marker.position}")
+            key(markers) {
+                markers.forEach { markerOptions ->
+                    Marker(
+                        state = rememberMarkerState(position = markerOptions.position),
+                        title = markerOptions.title,
+                        snippet = markerOptions.snippet,
+                        onClick = { marker ->
+                            selectedMarker = marker
+                            val clubId = markerMap[marker.position]
+                            if (clubId != null) {
+                                Log.d(
+                                    "MapScreen",
+                                    "Navigating to ClubDetailScreen with ID: $clubId"
+                                )
+                                navController.navigate("club_detail/$clubId")
+                            } else {
+                                Log.w(
+                                    "MapScreen",
+                                    "No club ID found for marker at ${marker.position}"
+                                )
+                            }
+                            true
                         }
-                        true
-                    }
-                )
-                Log.d("MapScreen", "Marker added: ${markerOptions.title} at ${markerOptions.position.latitude}, ${markerOptions.position.longitude}")
+                    )
+                    Log.d(
+                        "MapScreen",
+                        "Marker added: ${markerOptions.title} at ${markerOptions.position.latitude}, ${markerOptions.position.longitude}"
+                    )
 
+                }
             }
         }
     }

@@ -1,19 +1,41 @@
 package com.example.projekat.viewmodels
 
+import android.graphics.Bitmap
 import android.net.Uri
 import android.util.Log
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
-import com.google.firebase.storage.UploadTask
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 
 class RegistrationViewModel : ViewModel() {
 
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
     private val storage: FirebaseStorage = FirebaseStorage.getInstance()
+
+    var profileBitmap by mutableStateOf<Bitmap?>(null)
+        private set
+
+    var profileImageUri by mutableStateOf<Uri?>(null)
+        private set
+
+    fun onProfileImageUriChange(newUri: Uri?) {
+        profileImageUri = newUri
+    }
+
+    fun onProfileBitmapChange(newBitmap: Bitmap?) {
+        profileBitmap = newBitmap
+    }
 
     suspend fun registerUser(
         email: String,
@@ -32,15 +54,11 @@ class RegistrationViewModel : ViewModel() {
             // Get the user ID
             val userId = authResult.user?.uid ?: throw Exception("User ID is null")
 
-            // Upload profile picture if exists
+            // Upload profile picture if it exists, either from URI or Bitmap
             val profilePictureUrl = profilePictureUri?.let {
-                val storageRef = storage.reference.child("profile_pictures/$userId.jpg")
-                val uploadTask = storageRef.putFile(Uri.parse(it))
-                uploadTask.addOnFailureListener { exception ->
-                    Log.e("FirebaseStorage", "Error uploading file", exception)
-                }
-                val uploadTaskSnapshot = uploadTask.await()
-                uploadTaskSnapshot.metadata?.reference?.downloadUrl?.await().toString()
+                uploadProfileImage(it, userId)
+            } ?: profileBitmap?.let {
+                uploadBitmapAsImage(it, userId)
             }
 
             // Save user information to Firestore
@@ -60,6 +78,32 @@ class RegistrationViewModel : ViewModel() {
         } catch (exception: Exception) {
             // Call failure callback
             onFailure(exception)
+        }
+    }
+
+    private suspend fun uploadProfileImage(imageUri: String, userId: String): String {
+        val storageRef = storage.reference.child("profile_pictures/$userId.jpg")
+        val uploadTask = storageRef.putFile(Uri.parse(imageUri)).await()
+        return uploadTask.metadata?.reference?.downloadUrl?.await().toString()
+    }
+
+    private suspend fun uploadBitmapAsImage(bitmap: Bitmap, userId: String): String {
+        val uri = saveBitmapToTempFile(bitmap, userId)
+        return uri?.let { uploadProfileImage(it.toString(), userId) } ?: throw Exception("Failed to upload bitmap")
+    }
+
+    private fun saveBitmapToTempFile(bitmap: Bitmap, userId: String): Uri? {
+        return try {
+            // Save bitmap to a temporary file
+            val file = File.createTempFile("profile_image_$userId", ".jpg")
+            val outputStream = FileOutputStream(file)
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
+            outputStream.flush()
+            outputStream.close()
+            Uri.fromFile(file)
+        } catch (e: IOException) {
+            Log.e("RegistrationViewModel", "Failed to convert bitmap to file", e)
+            null
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.example.projekat
 
+import RegistrationScreen
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -8,27 +9,20 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
 import androidx.navigation.compose.*
-import androidx.navigation.navArgument
-import com.example.projekat.screens.AddDanceClubScreen
-import com.example.projekat.screens.AllDanceClubsScreen
-import com.example.projekat.screens.ClubDetailScreen
-import com.example.projekat.screens.LoginScreen
-import com.example.projekat.screens.ProfileScreen
-import com.example.projekat.screens.RegistrationScreen
-import com.example.projekat.screens.MapScreen
-import com.example.projekat.screens.RankingScreen
+import com.example.projekat.screens.*
 import com.example.projekat.ui.theme.ProjekatTheme
-import com.google.android.gms.games.leaderboard.Leaderboard
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,16 +39,33 @@ class MainActivity : ComponentActivity() {
             ProjekatTheme {
                 val navController = rememberNavController()
 
-                // Check user authentication status
-                val isLoggedIn by remember { mutableStateOf(FirebaseAuth.getInstance().currentUser != null) }
-                Log.d("MainActivity", "User logged in: $isLoggedIn")
+                // Mutable state for the authentication status
+                var isLoggedIn by remember { mutableStateOf(FirebaseAuth.getInstance().currentUser != null) }
+
+                // Monitor changes in authentication status
+                DisposableEffect(Unit) {
+                    val authStateListener = FirebaseAuth.AuthStateListener { auth ->
+                        isLoggedIn = auth.currentUser != null
+                        Log.d("MainActivity", "Auth state changed: User logged in: $isLoggedIn")
+                    }
+                    FirebaseAuth.getInstance().addAuthStateListener(authStateListener)
+
+                    // Clean up the listener when the composable is disposed
+                    onDispose {
+                        FirebaseAuth.getInstance().removeAuthStateListener(authStateListener)
+                    }
+                }
 
                 // Determine start destination based on authentication status
                 val startDestination = if (isLoggedIn) "profile" else "login"
                 Log.d("MainActivity", "Start destination: $startDestination")
 
                 Scaffold(
-                    bottomBar = { BottomNavigationBar(navController) },
+                    bottomBar = {
+                        if (isLoggedIn) {
+                            BottomNavigationBar(navController)
+                        }
+                    },
                     modifier = Modifier.fillMaxSize()
                 ) { innerPadding ->
                     NavigationHost(
@@ -67,6 +78,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
 @Composable
 fun BottomNavigationBar(navController: NavHostController) {
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -84,7 +96,7 @@ fun BottomNavigationBar(navController: NavHostController) {
             }
         )
         BottomNavigationItem(
-            icon = { Icon(imageVector = Icons.Filled.Home, contentDescription = "Map") },
+            icon = { Icon(imageVector = Icons.Filled.LocationOn, contentDescription = "Map") },
             label = { Text("Map") },
             selected = currentRoute == "map",
             onClick = {
@@ -95,13 +107,12 @@ fun BottomNavigationBar(navController: NavHostController) {
         )
 
         BottomNavigationItem(
-            icon = { Icon(imageVector = Icons.Filled.Home, contentDescription = "All Clubs") },
+            icon = { Icon(imageVector = Icons.Filled.List, contentDescription = "All Clubs") },
             label = { Text("All Clubs") },
             selected = currentRoute == "all_clubs",
             onClick = {
                 Log.d("BottomNavigationBar", "Navigating to all clubs")
                 navController.navigate("all_clubs")
-
             }
         )
         BottomNavigationItem(
@@ -147,7 +158,6 @@ fun NavigationHost(
         composable("club_detail/{clubId}") { backStackEntry ->
             val clubId = backStackEntry.arguments?.getString("clubId") ?: ""
             Log.d("MapScreen", "Navigating to ClubDetailScreen with clubId: $clubId")
-
             ClubDetailScreen(navController = navController, clubId = clubId)
         }
         composable("rankings") {
@@ -155,7 +165,6 @@ fun NavigationHost(
         }
     }
 }
-
 
 @Preview(showBackground = true)
 @Composable
@@ -168,7 +177,6 @@ fun DefaultPreview() {
                 startDestination = "login", // Default start destination for preview
                 modifier = Modifier.padding(innerPadding)
             )
-
         }
     }
 }
