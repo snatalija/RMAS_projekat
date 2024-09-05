@@ -18,12 +18,8 @@ import com.google.android.gms.location.*
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.sin
-import kotlin.math.sqrt
 import android.os.Looper
-import kotlin.random.Random
+import com.google.firebase.firestore.DocumentReference
 
 class LocationService : Service() {
 
@@ -47,14 +43,21 @@ class LocationService : Service() {
                 locationResult.locations.forEach { location ->
                     currentLocation = location
                     checkNearbyDanceClubs(location)
+                    if (FirebaseAuth.getInstance().currentUser != null) {
+                        val userRef = FirebaseFirestore.getInstance()
+                            .collection("users")
+                            .document(FirebaseAuth.getInstance().currentUser!!.uid)
+                        userRef.update("lat", location.latitude)
+                        userRef.update("lng", location.longitude)
+                    }
                 }
             }
         }
 
         fusedLocationClient.requestLocationUpdates(
             LocationRequest.create().apply {
-                interval = 10000 // 10 seconds
-                fastestInterval = 5000 // 5 seconds
+                interval = 10000 // 10 sec
+                fastestInterval = 5000 // 5 sec
                 priority = LocationRequest.PRIORITY_HIGH_ACCURACY
             },
             locationCallback,
@@ -64,7 +67,7 @@ class LocationService : Service() {
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Location Service")
             .setContentText("Tracking your location")
-            .setSmallIcon(R.drawable.ic_notification) // Replace with your notification icon
+            .setSmallIcon(R.drawable.ic_notification)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
 
@@ -98,7 +101,7 @@ class LocationService : Service() {
                         )
                     }
                 }
-                // Optional: Log or handle all nearby clubs' names
+
                 if (nearbyClubs.isNotEmpty()) {
                     Log.d("LocationService", "Nearby dance clubs: ${nearbyClubs.joinToString(", ")}")
                 } else {
@@ -113,17 +116,14 @@ class LocationService : Service() {
         val notificationManager =
             getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        // Kreiranje intent-a koji će se pokrenuti kada se klikne na notifikaciju
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
 
-        // Kreiranje PendingIntent-a koji će startovati MainActivity
         val pendingIntent = PendingIntent.getActivity(
             this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Kreiranje Notification Channel-a za Android 8.0+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
@@ -133,17 +133,15 @@ class LocationService : Service() {
             notificationManager.createNotificationChannel(channel)
         }
 
-        // Kreiranje notifikacije sa pending intent-om
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
             .setContentText(message)
-            .setSmallIcon(R.drawable.ic_notification) // Zamenite vašom ikonicom za notifikaciju
-            .setContentIntent(pendingIntent) // Dodavanje PendingIntent-a
-            .setAutoCancel(true) // Automatski zatvara notifikaciju kada se klikne na nju
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
 
-        // Prikazivanje notifikacije
         notificationManager.notify(id, notification)
     }
 

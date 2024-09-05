@@ -28,13 +28,13 @@ class ClubDetailViewModel : ViewModel() {
     private val _review = MutableStateFlow("")
     val review: StateFlow<String> = _review.asStateFlow()
 
-    private val _rating = MutableStateFlow(0)  // Add this for rating
+    private val _rating = MutableStateFlow(0)
     val rating: StateFlow<Int> = _rating.asStateFlow()
 
     private val _isSaving = MutableStateFlow(false)
     val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
 
-    private val _ownerName = MutableStateFlow("") // New state for owner's name
+    private val _ownerName = MutableStateFlow("")
     val ownerName: StateFlow<String> = _ownerName.asStateFlow()
 
 
@@ -49,7 +49,6 @@ class ClubDetailViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                // Fetch club details
                 val clubDocument = firestore.collection("dance_clubs").document(clubId).get().await()
                 val clubData = clubDocument.toObject(Club::class.java)
                 val userId = clubDocument.getString("userId") ?: ""
@@ -60,25 +59,22 @@ class ClubDetailViewModel : ViewModel() {
                     _ownerName.value = getUserName(userId)
                 }
 
-                // Fetch reviews and map to Review data class
                 val reviewsSnapshot = firestore.collection("dance_clubs").document(clubId).collection("reviews").get().await()
                 val reviewsList = reviewsSnapshot.map { document ->
                     val reviewText = document.getString("review") ?: ""
                     val authorId=document.getString("userId")?:""
-                    val userName = getUserName(authorId)  // Fetch user name asynchronously
+                    val userName = getUserName(authorId)
                     val reviewRating = document.getLong("rating")?.toInt() ?: 0
                     Log.d("ClubDetailViewModel", "Review Rating: $reviewRating")
                     Review(reviewText, userName, reviewRating)
                 }
                 _reviews.value = reviewsList
 
-                // Calculate average rating
                 val newAverageRating = calculateAverageRating(reviewsList)
                 _averageRating.value = newAverageRating
                 updateAverageRatingInFirestore(clubId, _averageRating.value)
                 Log.d("ClubDetailViewModel", "Calculated average rating: $newAverageRating")
 
-                // Check if the current user has already reviewed this club
                 auth.currentUser?.let { user ->
                     val userReviewDoc = firestore.collection("dance_clubs").document(clubId).collection("reviews").document(user.uid).get().await()
                     _reviewExists.value = userReviewDoc.exists()
@@ -88,13 +84,11 @@ class ClubDetailViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 Log.e("ClubDetailViewModel", "Error loading club details", e)
-                // Handle error
+
                 e.printStackTrace()
             }
         }
     }
-
-
 
     private suspend fun getUserName(userId: String): String {
         return try {
@@ -119,7 +113,7 @@ class ClubDetailViewModel : ViewModel() {
     fun updateReview(newReview: String) {
         _review.value = newReview
     }
-    fun updateRating(newRating: Int) {  // Add this to update rating
+    fun updateRating(newRating: Int) {
         _rating.value = newRating
     }
 
@@ -140,17 +134,15 @@ class ClubDetailViewModel : ViewModel() {
                             "userId" to userId
                         )
                         reviewRef.set(reviewData).await()
-                        _review.value = "" // Clear review field
-                        _rating.value = 0  // Clear rating
+                        _review.value = ""
+                        _rating.value = 0
 
                         val updatedReviews = _reviews.value + Review(_review.value, getUserName(userId), _rating.value)
                         _reviews.value = updatedReviews
 
-                        // Calculate new average rating
                         val newAverageRating = calculateAverageRating(updatedReviews)
                         _averageRating.value = newAverageRating
 
-                        // Update club status and average rating in Firestore
                         val updatedClub = _club.value?.copy(hasReviewed = true, averageRating = newAverageRating)
                         _club.value = updatedClub
 
@@ -175,7 +167,7 @@ class ClubDetailViewModel : ViewModel() {
         try {
             val userDoc = firestore.collection("users").document(userId).get().await()
             val currentPoints = userDoc.getLong("points")?.toInt() ?: 0
-            val newPoints = currentPoints + 10 // Example: Add 10 points for submitting a review
+            val newPoints = currentPoints + 10
             firestore.collection("users").document(userId).update("points", newPoints).await()
         } catch (e: Exception) {
             Log.e("ClubDetailViewModel", "Error updating user points", e)
@@ -186,7 +178,6 @@ class ClubDetailViewModel : ViewModel() {
         try {
             firestore.collection("dance_clubs").document(clubId).update("averageRating", averageRating).await()
         } catch (e: Exception) {
-            // Handle error
             e.printStackTrace()
         }
     }

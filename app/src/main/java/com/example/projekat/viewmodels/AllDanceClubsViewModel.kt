@@ -25,14 +25,13 @@ class AllDanceClubsViewModel : ViewModel() {
                     val danceType = document.getString("danceType") ?: ""
                     val workingHours = document.getString("workingHours") ?: ""
                     val userId = document.getString("userId") ?: ""
-                    val hasReviewed = document.getBoolean("hasReviewed") // Retrieve as Boolean?
+                    val hasReviewed = document.getBoolean("hasReviewed")
                     val averageRating = document.getDouble("averageRating")?.toFloat() ?: 0f
 
                     Club(id, name, danceType, workingHours, userId, hasReviewed, averageRating)
                 }
                 _clubs.value = clubList
 
-                // Fetch owner names for each club
                 val ownerNamesMap = mutableMapOf<String, String>()
                 for (club in clubList) {
                     val ownerId = club.userId ?: continue

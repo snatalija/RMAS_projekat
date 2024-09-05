@@ -85,7 +85,6 @@ fun LoginScreen(navController: NavHostController) {
             ClickableText(
                 text = AnnotatedString("Don't have an account? Register here"),
                 onClick = { offset ->
-                    // You may want to handle specific text click offsets here
                     navController.navigate("register")
                 },
                 style = MaterialTheme.typography.body1.copy(

@@ -45,22 +45,18 @@ fun RegistrationScreen(
     var profilePictureUri by remember { mutableStateOf<Uri?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    // Create a file to store the photo
     var tempImageUri by remember { mutableStateOf<Uri?>(null) }
 
-    // Launcher for selecting image from gallery
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         profilePictureUri = uri
     }
 
-    // Launcher for taking a photo with the camera
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
         if (success) {
             profilePictureUri = tempImageUri
         }
     }
 
-    // Create a file for storing the photo
     fun createImageFile(): Uri? {
         val fileName = "photo_${System.currentTimeMillis()}.jpg"
         val storageDir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)

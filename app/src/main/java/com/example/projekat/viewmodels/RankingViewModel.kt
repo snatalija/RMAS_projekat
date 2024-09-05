@@ -42,7 +42,7 @@ class RankingViewModel : ViewModel() {
                     val userId = document.id
                     val points = document.getLong("points")?.toInt() ?: 0
                     val userName = "${document.getString("firstName") ?: "Unknown"} ${document.getString("lastName") ?: ""}"
-                    val profilePictureUrl = getProfilePictureUrl(userId)
+                    val profilePictureUrl = document["profilePictureUrl"] as? String
                     UserRanking(userId, userName, points, profilePictureUrl)
                 }
 
@@ -55,15 +55,5 @@ class RankingViewModel : ViewModel() {
         }
     }
 
-    private suspend fun getProfilePictureUrl(userId: String): String? {
-        return try {
-            val storageRef = storage.reference.child("profile_pictures/$userId.jpg")
-            val downloadUrl = storageRef.downloadUrl.await()
-            Log.d("RankingViewModel", "Fetched image URL for user $userId: $downloadUrl")
-            downloadUrl.toString()
-        } catch (e: Exception) {
-            Log.e("RankingViewModel", "Error getting image URL for user $userId", e)
-            null
-        }
-    }
+
 }

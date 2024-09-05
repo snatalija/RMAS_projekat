@@ -18,9 +18,9 @@ fun AddDanceClubScreen(navController: NavHostController, latitude: Double, longi
     var clubName by remember { mutableStateOf("") }
     var workingHours by remember { mutableStateOf("") }
     var danceType by remember { mutableStateOf("") }
-    var creationDate by remember { mutableStateOf("") } // New state for creation date
+    var creationDate by remember { mutableStateOf("") }
     var isSaving by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf("") } // State for error message
+    var errorMessage by remember { mutableStateOf("") }
 
 
     Column(
@@ -55,7 +55,7 @@ fun AddDanceClubScreen(navController: NavHostController, latitude: Double, longi
         OutlinedTextField(
             value = creationDate,
             onValueChange = { creationDate = it },
-            label = { Text("Creation Date (yyyy-MM-dd)") }, // Assuming date format
+            label = { Text("Creation Date (yyyy-MM-dd)") },
             modifier = Modifier.fillMaxWidth(),
                     isError = errorMessage.isNotEmpty()
         )
@@ -73,7 +73,6 @@ fun AddDanceClubScreen(navController: NavHostController, latitude: Double, longi
             onClick = {
                 isSaving = true
 
-                // Validate the date format
                 val isValidDate = try {
                     val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                     dateFormat.parse(creationDate) != null
@@ -89,10 +88,10 @@ fun AddDanceClubScreen(navController: NavHostController, latitude: Double, longi
                         danceType = danceType,
                         latitude = latitude,
                         longitude = longitude,
-                        creationDate = creationDate, // Pass creation date
+                        creationDate = creationDate,
                         onSuccess = {
                             isSaving = false
-                            navController.popBackStack() // Return to the map screen
+                            navController.popBackStack()
                         },
                         onFailure = { e ->
                             isSaving = false
@@ -101,7 +100,6 @@ fun AddDanceClubScreen(navController: NavHostController, latitude: Double, longi
                     )
                 } else {
                     isSaving = false
-                    // Show an error message or handle invalid date
                     Log.w("AddDanceClub", "Invalid date format")
                 }
             },

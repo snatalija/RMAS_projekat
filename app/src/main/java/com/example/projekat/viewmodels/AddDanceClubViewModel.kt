@@ -26,7 +26,7 @@ class AddDanceClubViewModel : ViewModel() {
     ) {
         viewModelScope.launch {
             try {
-                val clubId = UUID.randomUUID().toString() // Generate a unique ID for the club
+                val clubId = UUID.randomUUID().toString()
                 val danceClubData = hashMapOf(
                     "id" to clubId,
                     "name" to clubName,
@@ -34,7 +34,7 @@ class AddDanceClubViewModel : ViewModel() {
                     "danceType" to danceType,
                     "latitude" to latitude,
                     "longitude" to longitude,
-                    "creationDate" to creationDate, // Add creation date
+                    "creationDate" to creationDate,
                     "userId" to user?.uid,
                     "averageRating" to 0f
                 )
@@ -44,7 +44,7 @@ class AddDanceClubViewModel : ViewModel() {
                     .addOnSuccessListener { documentReference ->
                         Log.d("AddDanceClub", "DocumentSnapshot added with ID: ${documentReference.id}")
                         user?.uid?.let { userId ->
-                            updateUserPoints(userId, 15) // Add 15 points
+                            updateUserPoints(userId)
                         }
                         onSuccess()
                     }
@@ -57,12 +57,12 @@ class AddDanceClubViewModel : ViewModel() {
             }
         }
     }
-    private fun updateUserPoints(userId: String, pointsToAdd: Int) {
+    private fun updateUserPoints(userId: String) {
         viewModelScope.launch {
             try {
                 val userDoc = firestore.collection("users").document(userId).get().await()
                 val currentPoints = userDoc.getLong("points")?.toInt() ?: 0
-                val newPoints = currentPoints + pointsToAdd
+                val newPoints = currentPoints + 15
                 firestore.collection("users").document(userId).update("points", newPoints).await()
                 Log.d("AddDanceClub", "User points updated: $newPoints")
             } catch (e: Exception) {

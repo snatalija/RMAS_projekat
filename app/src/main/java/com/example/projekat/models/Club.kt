@@ -1,5 +1,3 @@
-import com.google.firebase.firestore.DocumentId
-
 data class Club(
     val id: String = "",
     val name: String = "",

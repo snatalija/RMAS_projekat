@@ -42,29 +42,22 @@ fun MapScreen(navController: NavHostController) {
     val currentLocation by locationViewModel.currentLocation.observeAsState()
     val firestore = FirebaseFirestore.getInstance()
     val context = LocalContext.current
-    // State for rating range
     var minRating by remember { mutableStateOf(0.0) }
     var maxRating by remember { mutableStateOf(5.0) }
 
-    // State for filter dropdown
     var expanded by remember { mutableStateOf(false) }
     var selectedFilter by remember { mutableStateOf("Filter by") }
 
-    // State for rating filter visibility
     var ratingFilterVisible by remember { mutableStateOf(false) }
 
-    // State for style filter visibility
     var styleFilterVisible by remember { mutableStateOf(false) }
 
-    // State for selected styles
     var selectedStyles by remember { mutableStateOf(setOf<String>()) }
 
-    // Collect available dance styles
     val styles = remember { mutableStateListOf<String>() }
 
     var radiusFilterVisible by remember { mutableStateOf(false) }
 
-    // State for selected radius (in kilometers)
     var selectedRadius by remember { mutableStateOf(5.0) }
 
 
@@ -107,7 +100,6 @@ fun MapScreen(navController: NavHostController) {
             cameraPositionState.position = CameraPosition.fromLatLngZoom(LatLng(it.latitude, it.longitude), 15f)
         }
     }
-    // Load dance club data from Firestore with filters
     LaunchedEffect(minRating, maxRating, selectedStyles, selectedRadius) {
         var query = firestore.collection("dance_clubs")
             .whereGreaterThanOrEqualTo("averageRating", minRating)
@@ -133,7 +125,6 @@ fun MapScreen(navController: NavHostController) {
                         calculateDistance(LatLng(it.latitude, it.longitude), position)
                     } ?: Double.MAX_VALUE
 
-                    // Add marker if within selected radius
                     if (distance <= selectedRadius * 1000) { // Convert km to meters
                         newMarkers.add(
                             MarkerOptions()
@@ -155,20 +146,17 @@ fun MapScreen(navController: NavHostController) {
 
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Service control buttons
         ServiceControl()
 
-        // Spacer to separate service control from the rest of the content
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Filter by dropdown
         Box(modifier = Modifier.padding(16.dp)) {
             Text(
                 selectedFilter,
                 style = MaterialTheme.typography.h6,
                 modifier = Modifier
                     .clickable {
-                        expanded = !expanded // Toggle dropdown visibility
+                        expanded = !expanded
                     }
                     .padding(16.dp)
             )
@@ -176,12 +164,12 @@ fun MapScreen(navController: NavHostController) {
                 DropdownMenuItem(onClick = {
                     if (selectedFilter != "Filter by Rating") {
                         selectedFilter = "Filter by Rating"
-                        expanded = false // Close the dropdown
-                        ratingFilterVisible = true // Show rating filter
-                        styleFilterVisible = false // Hide style filter
-                        radiusFilterVisible = false // Hide radius filter
+                        expanded = false
+                        ratingFilterVisible = true
+                        styleFilterVisible = false
+                        radiusFilterVisible = false
                     } else {
-                        expanded = false // Close the dropdown
+                        expanded = false
                     }
                 }) {
                     Text("Filter by Rating")
@@ -189,12 +177,12 @@ fun MapScreen(navController: NavHostController) {
                 DropdownMenuItem(onClick = {
                     if (selectedFilter != "Filter by Style") {
                         selectedFilter = "Filter by Style"
-                        expanded = false // Close the dropdown
-                        styleFilterVisible = true // Show style filter
-                        ratingFilterVisible = false // Hide rating filter
-                        radiusFilterVisible = false // Hide radius filter
+                        expanded = false
+                        styleFilterVisible = true
+                        ratingFilterVisible = false
+                        radiusFilterVisible = false
                     } else {
-                        expanded = false // Close the dropdown
+                        expanded = false
                     }
                 }) {
                     Text("Filter by Style")
@@ -202,12 +190,12 @@ fun MapScreen(navController: NavHostController) {
                 DropdownMenuItem(onClick = {
                     if (selectedFilter != "Filter by Radius") {
                         selectedFilter = "Filter by Radius"
-                        expanded = false // Close the dropdown
-                        radiusFilterVisible = true // Show radius filter
-                        ratingFilterVisible = false // Hide rating filter
-                        styleFilterVisible = false // Hide style filter
+                        expanded = false
+                        radiusFilterVisible = true
+                        ratingFilterVisible = false
+                        styleFilterVisible = false
                     } else {
-                        expanded = false // Close the dropdown
+                        expanded = false
                     }
                 }) {
                     Text("Filter by Radius")
@@ -220,7 +208,6 @@ fun MapScreen(navController: NavHostController) {
             enter = fadeIn(),
             exit = fadeOut()
         ) {
-            // Rating filter
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -229,7 +216,6 @@ fun MapScreen(navController: NavHostController) {
                     .border(1.dp, MaterialTheme.colors.onSurface, MaterialTheme.shapes.medium)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    // Close button
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Close",
@@ -242,7 +228,6 @@ fun MapScreen(navController: NavHostController) {
                             .padding(8.dp)
                     )
 
-                    // Rating range sliders
                     Text(
                         "Min Rating: ${"%.1f".format(minRating)}",
                         modifier = Modifier.padding(start = 16.dp, end = 16.dp)
@@ -280,7 +265,6 @@ fun MapScreen(navController: NavHostController) {
                     .border(1.dp, MaterialTheme.colors.onSurface, MaterialTheme.shapes.medium)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    // Close button
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Close",
@@ -293,7 +277,6 @@ fun MapScreen(navController: NavHostController) {
                             .padding(8.dp)
                     )
 
-                    // Radius range slider
                     Text(
                         "Selected Radius: ${"%.1f".format(selectedRadius)} km",
                         modifier = Modifier.padding(start = 16.dp, end = 16.dp)
@@ -301,7 +284,7 @@ fun MapScreen(navController: NavHostController) {
                     Slider(
                         value = selectedRadius.toFloat(),
                         onValueChange = { selectedRadius = it.toDouble() },
-                        valueRange = 1f..50f, // Assuming 1 km to 50 km as reasonable range
+                        valueRange = 1f..50f,
                         modifier = Modifier.padding(start = 16.dp, end = 16.dp)
                     )
                 }
@@ -313,7 +296,6 @@ fun MapScreen(navController: NavHostController) {
             enter = fadeIn(),
             exit = fadeOut()
         ) {
-            // Style filter
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -322,7 +304,6 @@ fun MapScreen(navController: NavHostController) {
                     .border(1.dp, MaterialTheme.colors.onSurface, MaterialTheme.shapes.medium)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    // Close button
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Close",
@@ -335,7 +316,6 @@ fun MapScreen(navController: NavHostController) {
                             .padding(8.dp)
                     )
 
-                    // Style checkboxes
                     styles.forEach { style ->
                         Row(modifier = Modifier.padding(8.dp)) {
                             Checkbox(
@@ -407,17 +387,14 @@ fun MapScreen(navController: NavHostController) {
 fun ServiceControl() {
     val context = LocalContext.current
 
-    // State for service status
     var isServiceRunning by remember { mutableStateOf(false) }
 
-    // Function to start the service
     fun startService() {
         val serviceIntent = Intent(context, LocationService::class.java)
         context.startForegroundService(serviceIntent)
         isServiceRunning = true
     }
 
-    // Function to stop the service
     fun stopService() {
         val serviceIntent = Intent(context, LocationService::class.java)
         context.stopService(serviceIntent)
@@ -432,14 +409,14 @@ fun ServiceControl() {
     ) {
         Button(
             onClick = { startService() },
-            enabled = !isServiceRunning // Disable if service is running
+            enabled = !isServiceRunning
         ) {
             Text("Start Service")
         }
 
         Button(
             onClick = { stopService() },
-            enabled = isServiceRunning // Disable if service is not running
+            enabled = isServiceRunning
         ) {
             Text("Stop Service")
         }
@@ -454,7 +431,6 @@ fun calculateDistance(start: LatLng, end: LatLng): Double {
     )
     val distance = result[0].toDouble()
 
-    // Log coordinates and distance
     Log.d(
         "DistanceCalculation",
         "Start coordinates: (${start.latitude}, ${start.longitude}), End coordinates: (${end.latitude}, ${end.longitude}), Distance: $distance meters"

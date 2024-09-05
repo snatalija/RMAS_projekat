@@ -30,19 +30,15 @@ class MainActivity : ComponentActivity() {
 
         Log.d("MainActivity", "onCreate called")
 
-        // Initialize Firebase
         FirebaseApp.initializeApp(this)
         Log.d("MainActivity", "Firebase initialized")
 
-        // Set up the content view
         setContent {
             ProjekatTheme {
                 val navController = rememberNavController()
 
-                // Mutable state for the authentication status
                 var isLoggedIn by remember { mutableStateOf(FirebaseAuth.getInstance().currentUser != null) }
 
-                // Monitor changes in authentication status
                 DisposableEffect(Unit) {
                     val authStateListener = FirebaseAuth.AuthStateListener { auth ->
                         isLoggedIn = auth.currentUser != null
@@ -50,13 +46,11 @@ class MainActivity : ComponentActivity() {
                     }
                     FirebaseAuth.getInstance().addAuthStateListener(authStateListener)
 
-                    // Clean up the listener when the composable is disposed
                     onDispose {
                         FirebaseAuth.getInstance().removeAuthStateListener(authStateListener)
                     }
                 }
 
-                // Determine start destination based on authentication status
                 val startDestination = if (isLoggedIn) "profile" else "login"
                 Log.d("MainActivity", "Start destination: $startDestination")
 
@@ -174,7 +168,7 @@ fun DefaultPreview() {
         Scaffold(bottomBar = { BottomNavigationBar(navController) }) { innerPadding ->
             NavigationHost(
                 navController = navController,
-                startDestination = "login", // Default start destination for preview
+                startDestination = "login",
                 modifier = Modifier.padding(innerPadding)
             )
         }

@@ -51,12 +51,12 @@ fun RankingItem(ranking: UserRanking) {
         ) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
-                    .data(ranking.profilePictureUrl) // Update field to profilePictureUrl
+                    .data(ranking.profilePictureUrl)
                     .crossfade(true)
                     .build(),
                 contentDescription = null,
                 modifier = Modifier
-                    .size(50.dp) // Adjust size as needed
+                    .size(50.dp)
                     .clip(MaterialTheme.shapes.small)
             )
 

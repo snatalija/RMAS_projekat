@@ -46,42 +46,6 @@ class ProfileViewModel : ViewModel() {
         }
     }
 
-    fun updateUserProfile(
-        firstName: String,
-        lastName: String,
-        phoneNumber: String,
-        profilePictureUrl: String?
-    ) {
-        viewModelScope.launch {
-            val userId = auth.currentUser?.uid ?: return@launch
-            val userData = mapOf(
-                "firstName" to firstName,
-                "lastName" to lastName,
-                "phoneNumber" to phoneNumber,
-                "profilePictureUrl" to profilePictureUrl
-            )
-
-            firestore.collection("users").document(userId).set(userData).await()
-            loadUserProfile()
-        }
-    }
-
-    fun updateProfilePicture(uri: Uri) {
-        viewModelScope.launch {
-            val userId = auth.currentUser?.uid ?: return@launch
-            val storageRef = storage.reference.child("profilePictures/$userId.jpg")
-            val uploadTask = storageRef.putFile(uri).await()
-            val downloadUrl = uploadTask.metadata?.reference?.downloadUrl?.await().toString()
-
-            updateUserProfile(
-                firstName = _userProfile.value.firstName,
-                lastName = _userProfile.value.lastName,
-                phoneNumber = _userProfile.value.phoneNumber,
-                profilePictureUrl = downloadUrl
-            )
-        }
-    }
-
     fun logout() {
         viewModelScope.launch {
             try {

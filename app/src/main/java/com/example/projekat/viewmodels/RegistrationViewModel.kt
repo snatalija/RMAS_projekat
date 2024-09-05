@@ -29,13 +29,7 @@ class RegistrationViewModel : ViewModel() {
     var profileImageUri by mutableStateOf<Uri?>(null)
         private set
 
-    fun onProfileImageUriChange(newUri: Uri?) {
-        profileImageUri = newUri
-    }
 
-    fun onProfileBitmapChange(newBitmap: Bitmap?) {
-        profileBitmap = newBitmap
-    }
 
     suspend fun registerUser(
         email: String,
@@ -48,20 +42,15 @@ class RegistrationViewModel : ViewModel() {
         onFailure: (Exception) -> Unit
     ) {
         try {
-            // Register user with Firebase Auth
             val authResult = auth.createUserWithEmailAndPassword(email, password).await()
-
-            // Get the user ID
             val userId = authResult.user?.uid ?: throw Exception("User ID is null")
 
-            // Upload profile picture if it exists, either from URI or Bitmap
             val profilePictureUrl = profilePictureUri?.let {
                 uploadProfileImage(it, userId)
             } ?: profileBitmap?.let {
                 uploadBitmapAsImage(it, userId)
             }
 
-            // Save user information to Firestore
             val userData = mapOf(
                 "firstName" to firstName,
                 "lastName" to lastName,
@@ -72,11 +61,9 @@ class RegistrationViewModel : ViewModel() {
 
             firestore.collection("users").document(userId).set(userData).await()
 
-            // Call success callback
             onSuccess()
 
         } catch (exception: Exception) {
-            // Call failure callback
             onFailure(exception)
         }
     }
@@ -94,7 +81,6 @@ class RegistrationViewModel : ViewModel() {
 
     private fun saveBitmapToTempFile(bitmap: Bitmap, userId: String): Uri? {
         return try {
-            // Save bitmap to a temporary file
             val file = File.createTempFile("profile_image_$userId", ".jpg")
             val outputStream = FileOutputStream(file)
             bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)

@@ -17,7 +17,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import coil.compose.rememberImagePainter
 import com.example.projekat.viewmodels.ProfileViewModel
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 @Composable
 fun ProfileScreen(
@@ -86,7 +85,6 @@ fun ProfileScreen(
         Button(onClick = {
             coroutineScope.launch {
                 viewModel.logout()
-                // Navigate to login screen or handle post-logout actions
                 navController.navigate("login") {
                     popUpTo("profile") { inclusive = true }
                 }
